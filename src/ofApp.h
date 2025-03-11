@@ -76,6 +76,8 @@ public:
 	void onApplySyphonSizeEvent(ofxDatGuiButtonEvent e);
 	void onSpeedButtonEvent(ofxDatGuiButtonEvent e);
 	void onScrubberEvent(ofxDatGuiSliderEvent e);
+	void onLastFramesButtonEvent(ofxDatGuiButtonEvent e);
+	void onLastFramesInputEvent(ofxDatGuiTextInputEvent e);
 	
 	// New event handlers for direction and loop mode
 	void onDirectionForwardEvent(ofxDatGuiToggleEvent e);
@@ -141,4 +143,11 @@ public:
 	
 	// Changed from 'dir' to 'imageDir'
 	ofDirectory imageDir;
+	
+	// New GUI elements for last frames functionality
+	vector<ofxDatGuiButton*> lastFramesButtons;
+	ofxDatGuiTextInput* lastFramesInput;
+	
+	// Helper function for setting last X frames
+	void setLastXFrames(int numFrames);
 };

@@ -14,16 +14,12 @@ This app is on mac with _openFrameworks_. The app is as follows:
 - user can also toggle a black screen
 - new UI > range slider etc
 https://github.com/braitsch/ofxDatGui
+- ping pong toggle
+- remember last speed: use that to toggle pause and play
 
 Todo
 - brightness slider
 - contrast slider
 - saturation slider
 
-- ping pong toggle
-
 - play last x frames: 5, 10, 100, user input
-
-- remember last speed: use that to toggle pause and play
-
-- save settings working

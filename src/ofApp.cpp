@@ -83,6 +83,22 @@ void ofApp::setup(){
     endFrameSlider->onSliderEvent(this, &ofApp::onEndFrameEvent);
     endFrameSlider->setPrecision(0);
     
+    // Add "Play Last X Frames" controls
+    
+    // Create a row of buttons for preset values
+    vector<int> lastFramePresets = {5, 10, 100};
+    for(int i = 0; i < lastFramePresets.size(); i++) {
+        ofxDatGuiButton* button = gui->addButton("Play Last " + ofToString(lastFramePresets[i]));
+        button->setWidth((UI_PANEL_WIDTH - 20) / 3);
+        button->onButtonEvent(this, &ofApp::onLastFramesButtonEvent);
+        lastFramesButtons.push_back(button);
+    }
+    
+    // Add custom input for last frames
+    lastFramesInput = gui->addTextInput("Play Last X Frames", "");
+    lastFramesInput->setInputType(ofxDatGuiInputType::NUMERIC);
+    lastFramesInput->onTextInputEvent(this, &ofApp::onLastFramesInputEvent);
+    
     currentFrameLabel = gui->addLabel("Frame: 0/0");
     
     blackScreenToggle = gui->addToggle("Black Screen");
@@ -690,5 +706,55 @@ void ofApp::onPingPongModeEvent(ofxDatGuiToggleEvent e) {
     } else if (!loopModeButton->getChecked()) {
         // Don't allow both to be unchecked
         pingPongModeButton->setChecked(true);
+    }
+}
+
+void ofApp::onLastFramesButtonEvent(ofxDatGuiButtonEvent e) {
+    string label = e.target->getLabel();
+    int numFrames = 0;
+    
+    // Extract the number from the button label (format: "Last X")
+    size_t spacePos = label.find(" ");
+    if (spacePos != string::npos) {
+        string numStr = label.substr(spacePos + 1);
+        numFrames = ofToInt(numStr);
+    }
+    
+    if (numFrames > 0) {
+        setLastXFrames(numFrames);
+        // Update the custom input field to reflect the selection
+        lastFramesInput->setText(ofToString(numFrames));
+    }
+}
+
+void ofApp::onLastFramesInputEvent(ofxDatGuiTextInputEvent e) {
+    int numFrames = ofToInt(e.text);
+    if (numFrames > 0) {
+        setLastXFrames(numFrames);
+    }
+}
+
+void ofApp::setLastXFrames(int numFrames) {
+    if (imagePaths.empty()) return;
+    
+    int totalFrames = imagePaths.size();
+    
+    // Calculate new start and end frames
+    int newStart = max(1, totalFrames - numFrames + 1); // 1-based index for display
+    int newEnd = totalFrames; // 1-based index for display
+    
+    // Update sliders
+    startFrameSlider->setValue(newStart);
+    endFrameSlider->setValue(newEnd);
+    
+    // Update internal range variables (0-based for program)
+    rangeStart = newStart - 1;
+    rangeEnd = newEnd - 1;
+    
+    // Set current frame to start of range
+    currentImageIndex = rangeStart;
+    if (currentImageIndex < imagePaths.size()) {
+        currentImage.load(imagePaths[currentImageIndex]);
+        updateFrameInfo();
     }
 }
