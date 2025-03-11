@@ -31,11 +31,9 @@ void ofApp::setup(){
     gui->setWidth(UI_PANEL_WIDTH - 20);
     
     // Add controls
-    playButton = gui->addButton("PLAY");
+    playButton = gui->addButton("Play");
     playButton->onButtonEvent(this, &ofApp::onPlayButtonEvent);
     playButton->setBackgroundColor(ofColor(0, 200, 0)); // Initial green color for paused
-    playButton->setStripeVisible(false); // Remove the stripe for a cleaner look
-    
     
     speedSlider = gui->addSlider("Speed", 0.0f, MAX_SPEED, DEFAULT_SPEED);
     speedSlider->onSliderEvent(this, &ofApp::onSpeedSliderEvent);
@@ -207,9 +205,6 @@ void ofApp::draw(){
     // Draw GUI
     gui->draw();
     
-    // Draw play/pause icon on top of the button
-    drawPlayPauseIcon();
-    
     // Draw drop zone
     ofPushStyle();
     ofSetColor(40);
@@ -238,7 +233,7 @@ void ofApp::keyPressed(int key){
     switch (key) {
         case ' ':
             isPlaying = !isPlaying;
-            playButton->setLabel(isPlaying ? "PAUSE" : "PLAY");
+            playButton->setLabel(isPlaying ? "Pause" : "Play");
             // Update button color based on play state
             if(isPlaying) {
                 playButton->setBackgroundColor(ofColor(255, 128, 0)); // Orange for playing
@@ -393,7 +388,7 @@ void ofApp::updateFrameInfo() {
 
 void ofApp::onPlayButtonEvent(ofxDatGuiButtonEvent e) {
     isPlaying = !isPlaying;
-    playButton->setLabel(isPlaying ? "PAUSE" : "PLAY");
+    playButton->setLabel(isPlaying ? "Pause" : "Play");
     
     // Set button color based on play state
     if(isPlaying) {
@@ -456,35 +451,4 @@ void ofApp::onApplySyphonSizeEvent(ofxDatGuiButtonEvent e) {
 //--------------------------------------------------------------
 void ofApp::gotMessage(ofMessage msg){
     // Empty implementation - this is a required method in openFrameworks
-}
-
-// Add a new method to draw the play/pause icons
-void ofApp::drawPlayPauseIcon() {
-    // Get the button's position and dimensions
-    ofRectangle bounds = playButton->getBounds();
-    float x = bounds.x + bounds.width / 2;
-    float y = bounds.y + bounds.height / 2;
-    float size = min(bounds.width, bounds.height) * 0.4; // Icon size relative to button
-    
-    ofPushStyle();
-    ofSetColor(255); // White icon
-    
-    if (isPlaying) {
-        // Draw pause icon (two vertical bars)
-        float barWidth = size * 0.3;
-        float spacing = size * 0.2;
-        ofDrawRectangle(x - spacing - barWidth, y - size/2, barWidth, size);
-        ofDrawRectangle(x + spacing, y - size/2, barWidth, size);
-    } else {
-        // Draw play icon (triangle)
-        ofPath triangle;
-        triangle.moveTo(x - size/2, y - size/2);
-        triangle.lineTo(x - size/2, y + size/2);
-        triangle.lineTo(x + size/2, y);
-        triangle.close();
-        triangle.setFilled(true);
-        triangle.draw();
-    }
-    
-    ofPopStyle();
 }
