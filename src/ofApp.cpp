@@ -40,13 +40,18 @@ void ofApp::setup(){
     
     // Add speed buttons
     vector<float> speeds = {0.2, 0.5, 1.0, 2.0};
-    vector<string> labels = {".2x", ".5x", "1x", "2x"};
+    vector<string> labels = {"0.2x", "0.5x", "1x", "2x"};
     for(int i = 0; i < speeds.size(); i++) {
         ofxDatGuiButton* button = gui->addButton(labels[i]);
         button->setWidth(UI_PANEL_WIDTH/4 - 5);
         button->onButtonEvent(this, &ofApp::onSpeedButtonEvent);
         speedButtons.push_back(button);
     }
+    
+    // Add scrubber bar instead of empty line
+    scrubberBar = gui->addSlider("", 0, 1, 0);
+    scrubberBar->setLabel("Scrub");
+    scrubberBar->onSliderEvent(this, &ofApp::onScrubberEvent);
     
     startFrameSlider = gui->addSlider("Start Frame", 1, 1, 1);
     startFrameSlider->onSliderEvent(this, &ofApp::onStartFrameEvent);
@@ -118,6 +123,16 @@ void ofApp::update(){
             }
             lastImageTime = currentTime;
         }
+    }
+
+    // Update scrubber position when playing
+    if (isPlaying && !showBlackScreen && !imagePaths.empty()) {
+        // Update scrubber to reflect current position in the range
+        float scrubberPos = 0;
+        if (rangeEnd > rangeStart) {
+            scrubberPos = (float)(currentImageIndex - rangeStart) / (rangeEnd - rangeStart);
+        }
+        scrubberBar->setValue(scrubberPos);
     }
 }
 
@@ -266,12 +281,81 @@ void ofApp::mouseMoved(int x, int y){
 
 //--------------------------------------------------------------
 void ofApp::mouseDragged(int x, int y, int button){
-
+    // Check if we're scrubbing
+    if (isScrubbing) {
+        // Calculate position within the scrubber bar
+        float barX = scrubberBar->getX();
+        float barY = scrubberBar->getY();
+        float barWidth = scrubberBar->getWidth();
+        float barHeight = scrubberBar->getHeight();
+        
+        if (x >= barX && x <= barX + barWidth) {
+            float percentage = (x - barX) / barWidth;
+            percentage = ofClamp(percentage, 0.0f, 1.0f);
+            
+            // Calculate frame index based on percentage
+            int frameIndex = rangeStart + round(percentage * (rangeEnd - rangeStart));
+            frameIndex = ofClamp(frameIndex, rangeStart, rangeEnd);
+            
+            // Update current frame
+            if (frameIndex != currentImageIndex && frameIndex < imagePaths.size()) {
+                currentImageIndex = frameIndex;
+                currentImage.load(imagePaths[currentImageIndex]);
+                updateFrameInfo();
+            }
+            
+            // Update scrubber position
+            scrubberBar->setValue(percentage);
+        }
+    } else if(y > ofGetHeight() - 60 && x < UI_PANEL_WIDTH) {
+        ofFileDialogResult result = ofSystemLoadDialog("Select folder containing images", true);
+        if(result.bSuccess) {
+            folderSelected(result);
+        }
+    }
 }
 
 //--------------------------------------------------------------
 void ofApp::mousePressed(int x, int y, int button){
-    if(y > ofGetHeight() - 60 && x < UI_PANEL_WIDTH) {
+    // Check if click is within scrubber bar
+    float barX = scrubberBar->getX();
+    float barY = scrubberBar->getY();
+    float barWidth = scrubberBar->getWidth();
+    float barHeight = scrubberBar->getHeight();
+    
+    if (x >= barX && x <= barX + barWidth &&
+        y >= barY && y <= barY + barHeight) {
+        
+        // Store current playback state
+        prevPlayState = isPlaying;
+        prevPlaySpeed = speedSlider->getValue();
+        
+        // Pause playback during scrubbing
+        isPlaying = false;
+        playButton->setLabel("Play");
+        playButton->setBackgroundColor(ofColor(0, 200, 0));
+        
+        // Set scrubbing flag
+        isScrubbing = true;
+        
+        // Initial scrub position
+        float percentage = (x - barX) / barWidth;
+        percentage = ofClamp(percentage, 0.0f, 1.0f);
+        
+        // Calculate frame index based on percentage
+        int frameIndex = rangeStart + round(percentage * (rangeEnd - rangeStart));
+        frameIndex = ofClamp(frameIndex, rangeStart, rangeEnd);
+        
+        // Update current frame
+        if (frameIndex != currentImageIndex && frameIndex < imagePaths.size()) {
+            currentImageIndex = frameIndex;
+            currentImage.load(imagePaths[currentImageIndex]);
+            updateFrameInfo();
+        }
+        
+        // Update scrubber position
+        scrubberBar->setValue(percentage);
+    } else if(y > ofGetHeight() - 60 && x < UI_PANEL_WIDTH) {
         ofFileDialogResult result = ofSystemLoadDialog("Select folder containing images", true);
         if(result.bSuccess) {
             folderSelected(result);
@@ -281,7 +365,22 @@ void ofApp::mousePressed(int x, int y, int button){
 
 //--------------------------------------------------------------
 void ofApp::mouseReleased(int x, int y, int button){
-
+    // If we were scrubbing, restore previous playback state
+    if (isScrubbing) {
+        isScrubbing = false;
+        
+        // Restore previous playback state
+        isPlaying = prevPlayState;
+        speedSlider->setValue(prevPlaySpeed);
+        
+        // Update play button appearance
+        playButton->setLabel(isPlaying ? "Pause" : "Play");
+        if(isPlaying) {
+            playButton->setBackgroundColor(ofColor(255, 128, 0)); // Orange for playing
+        } else {
+            playButton->setBackgroundColor(ofColor(0, 200, 0)); // Green for paused
+        }
+    }
 }
 
 //--------------------------------------------------------------
@@ -446,6 +545,21 @@ void ofApp::onAspectRatioEvent(ofxDatGuiToggleEvent e) {
 
 void ofApp::onApplySyphonSizeEvent(ofxDatGuiButtonEvent e) {
     syphonFbo.allocate(syphonWidth, syphonHeight, GL_RGBA);
+}
+
+void ofApp::onScrubberEvent(ofxDatGuiSliderEvent e) {
+    if (!imagePaths.empty() && rangeEnd > rangeStart) {
+        // Calculate frame index based on percentage
+        int frameIndex = rangeStart + round(e.value * (rangeEnd - rangeStart));
+        frameIndex = ofClamp(frameIndex, rangeStart, rangeEnd);
+        
+        // Update current frame
+        if (frameIndex != currentImageIndex && frameIndex < imagePaths.size()) {
+            currentImageIndex = frameIndex;
+            currentImage.load(imagePaths[currentImageIndex]);
+            updateFrameInfo();
+        }
+    }
 }
 
 //--------------------------------------------------------------

@@ -63,6 +63,7 @@ public:
 	void onAspectRatioEvent(ofxDatGuiToggleEvent e);
 	void onApplySyphonSizeEvent(ofxDatGuiButtonEvent e);
 	void onSpeedButtonEvent(ofxDatGuiButtonEvent e);
+	void onScrubberEvent(ofxDatGuiSliderEvent e);
 	
 private:
 	ofDirectory dir;
@@ -104,4 +105,9 @@ private:
 	ofxDatGuiToggle* aspectRatioToggle;
 	ofxDatGuiButton* applySyphonSizeButton;
 	vector<ofxDatGuiButton*> speedButtons;
+	
+	ofxDatGuiSlider* scrubberBar;
+	bool isScrubbing = false;
+	bool prevPlayState = false;
+	float prevPlaySpeed = 1.0f;
 };
