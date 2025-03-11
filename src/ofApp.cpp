@@ -227,10 +227,10 @@ void ofApp::draw(){
     ofPopStyle();
     
     // First render to FBO for Syphon output
+    syphonFbo.begin();
+    ofClear(0, 0, 0, 255);
+    
     if (!showBlackScreen && currentImage.isAllocated()) {
-        syphonFbo.begin();
-        ofClear(0, 0, 0, 255);
-        
         if (maintainAspectRatio) {
             // Calculate scaling to maintain aspect ratio
             float scale = min(syphonWidth / (float)currentImage.getWidth(),
@@ -248,11 +248,14 @@ void ofApp::draw(){
             // Stretch to fill entire FBO
             currentImage.draw(0, 0, syphonWidth, syphonHeight);
         }
-        syphonFbo.end();
-        
-        // Send FBO to Syphon
-        syphonServer.publishTexture(&syphonFbo.getTexture());
     }
+    // We don't need to draw anything else when showBlackScreen is true
+    // as we already cleared the FBO to black
+    
+    syphonFbo.end();
+    
+    // Send FBO to Syphon (always, even for black screen)
+    syphonServer.publishTexture(&syphonFbo.getTexture());
     
     // Draw preview in window
     if (!showBlackScreen && currentImage.isAllocated()) {
