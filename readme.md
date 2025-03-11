@@ -1,7 +1,7 @@
 # SequenceStreamer
-play image sequences from a folder and stream them to other apps with Syphon
+### Plays image sequences from a folder and stream them to other apps with Syphon
 
-This app is on mac with openframeworks. The app is as follows:
+This app is on mac with _openFrameworks_. The app is as follows:
 - user assigns a folder to read
 - from that folder all images are read
 - all images are played in sequence, set by a speed interval
