@@ -7,6 +7,18 @@
 
 class ofApp : public ofBaseApp {
 public:
+	// Playback direction enum
+	enum PlayDirection {
+		FORWARD,
+		BACKWARD
+	};
+	
+	// Loop mode enum
+	enum LoopMode {
+		LOOP,
+		PING_PONG
+	};
+	
 	void setup();
 	void update();
 	void draw();
@@ -65,8 +77,38 @@ public:
 	void onSpeedButtonEvent(ofxDatGuiButtonEvent e);
 	void onScrubberEvent(ofxDatGuiSliderEvent e);
 	
-private:
-	ofDirectory dir;
+	// New event handlers for direction and loop mode
+	void onDirectionForwardEvent(ofxDatGuiToggleEvent e);
+	void onDirectionBackwardEvent(ofxDatGuiToggleEvent e);
+	void onLoopModeEvent(ofxDatGuiToggleEvent e);
+	void onPingPongModeEvent(ofxDatGuiToggleEvent e);
+	
+	// GUI elements
+	ofxDatGui* gui;
+	ofxDatGuiButton* playButton;
+	ofxDatGuiSlider* speedSlider;
+	ofxDatGuiSlider* scrubberBar;
+	ofxDatGuiSlider* startFrameSlider;
+	ofxDatGuiSlider* endFrameSlider;
+	ofxDatGuiLabel* currentFrameLabel;
+	ofxDatGuiToggle* blackScreenToggle;
+	ofxDatGuiTextInput* syphonWidthInput;
+	ofxDatGuiTextInput* syphonHeightInput;
+	ofxDatGuiToggle* aspectRatioToggle;
+	ofxDatGuiButton* applySyphonSizeButton;
+	vector<ofxDatGuiButton*> speedButtons;
+	
+	// New GUI elements for direction and loop mode
+	ofxDatGuiToggle* directionForwardButton;
+	ofxDatGuiToggle* directionBackwardButton;
+	ofxDatGuiToggle* loopModeButton;
+	ofxDatGuiToggle* pingPongModeButton;
+	
+	// Playback variables
+	PlayDirection playDirection;
+	LoopMode loopMode;
+	
+	// Directory watching
 	float lastCheckTime;
 	float checkInterval; // how often to check for new files (in seconds)
 	string displayPath; // Shortened version of directoryPath for display
@@ -92,22 +134,11 @@ private:
 	int syphonHeight;
 	bool maintainAspectRatio;
 	
-	// DatGui components
-	ofxDatGui* gui;
-	ofxDatGuiButton* playButton;
-	ofxDatGuiSlider* speedSlider;
-	ofxDatGuiSlider* startFrameSlider;
-	ofxDatGuiSlider* endFrameSlider;
-	ofxDatGuiLabel* currentFrameLabel;
-	ofxDatGuiToggle* blackScreenToggle;
-	ofxDatGuiTextInput* syphonWidthInput;
-	ofxDatGuiTextInput* syphonHeightInput;
-	ofxDatGuiToggle* aspectRatioToggle;
-	ofxDatGuiButton* applySyphonSizeButton;
-	vector<ofxDatGuiButton*> speedButtons;
-	
-	ofxDatGuiSlider* scrubberBar;
+	// Playback variables
 	bool isScrubbing = false;
 	bool prevPlayState = false;
 	float prevPlaySpeed = 1.0f;
+	
+	// Changed from 'dir' to 'imageDir'
+	ofDirectory imageDir;
 };

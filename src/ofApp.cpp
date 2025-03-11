@@ -12,6 +12,8 @@ void ofApp::setup(){
     rangeEnd = 0;
     lastCheckTime = 0;
     checkInterval = 1.0; // Check every second
+    playDirection = FORWARD;
+    loopMode = LOOP;
     
     // Initialize Syphon parameters
     syphonWidth = 1920;
@@ -47,6 +49,26 @@ void ofApp::setup(){
         button->onButtonEvent(this, &ofApp::onSpeedButtonEvent);
         speedButtons.push_back(button);
     }
+    
+    // Add playback direction controls
+    gui->addLabel("Playback Direction");
+    directionForwardButton = gui->addToggle("Forward");
+    directionForwardButton->setChecked(playDirection == FORWARD);
+    directionForwardButton->onToggleEvent(this, &ofApp::onDirectionForwardEvent);
+    
+    directionBackwardButton = gui->addToggle("Backward");
+    directionBackwardButton->setChecked(playDirection == BACKWARD);
+    directionBackwardButton->onToggleEvent(this, &ofApp::onDirectionBackwardEvent);
+    
+    // Add loop mode controls
+    gui->addLabel("Loop Mode");
+    loopModeButton = gui->addToggle("Loop");
+    loopModeButton->setChecked(loopMode == LOOP);
+    loopModeButton->onToggleEvent(this, &ofApp::onLoopModeEvent);
+    
+    pingPongModeButton = gui->addToggle("Ping Pong");
+    pingPongModeButton->setChecked(loopMode == PING_PONG);
+    pingPongModeButton->onToggleEvent(this, &ofApp::onPingPongModeEvent);
     
     // Add scrubber bar instead of empty line
     scrubberBar = gui->addSlider("", 0, 1, 0);
@@ -92,14 +114,14 @@ void ofApp::update(){
     // Add directory watching
     float currentTime = ofGetElapsedTimef();
     if (!directoryPath.empty() && currentTime - lastCheckTime >= checkInterval) {
-        dir.listDir(directoryPath);
-        dir.allowExt("jpg");
-        dir.allowExt("png");
-        dir.allowExt("tif");
-        dir.allowExt("tiff");
+        imageDir.listDir(directoryPath);
+        imageDir.allowExt("jpg");
+        imageDir.allowExt("png");
+        imageDir.allowExt("tif");
+        imageDir.allowExt("tiff");
         
         // If number of files changed, reload the directory
-        if (dir.size() != imagePaths.size()) {
+        if (imageDir.size() != imagePaths.size()) {
             loadImagesFromDirectory(directoryPath);
         }
         lastCheckTime = currentTime;
@@ -113,11 +135,40 @@ void ofApp::update(){
         currentTime = ofGetElapsedTimef();
         
         if (currentTime - lastImageTime >= frameTime) {
-            currentImageIndex++;
-            if (currentImageIndex > rangeEnd || currentImageIndex >= imagePaths.size()) {
-                currentImageIndex = rangeStart;
+            // Update frame index based on playback direction
+            if (playDirection == FORWARD) {
+                currentImageIndex++;
+                
+                // Handle reaching the end based on loop mode
+                if (currentImageIndex > rangeEnd) {
+                    if (loopMode == LOOP) {
+                        currentImageIndex = rangeStart;
+                    } else if (loopMode == PING_PONG) {
+                        currentImageIndex = rangeEnd - 1;
+                        if (currentImageIndex < rangeStart) currentImageIndex = rangeStart;
+                        playDirection = BACKWARD;
+                        directionForwardButton->setChecked(false);
+                        directionBackwardButton->setChecked(true);
+                    }
+                }
+            } else { // BACKWARD
+                currentImageIndex--;
+                
+                // Handle reaching the start based on loop mode
+                if (currentImageIndex < rangeStart) {
+                    if (loopMode == LOOP) {
+                        currentImageIndex = rangeEnd;
+                    } else if (loopMode == PING_PONG) {
+                        currentImageIndex = rangeStart + 1;
+                        if (currentImageIndex > rangeEnd) currentImageIndex = rangeEnd;
+                        playDirection = FORWARD;
+                        directionForwardButton->setChecked(true);
+                        directionBackwardButton->setChecked(false);
+                    }
+                }
             }
-            if (currentImageIndex < imagePaths.size()) {
+            
+            if (currentImageIndex >= 0 && currentImageIndex < imagePaths.size()) {
                 currentImage.load(imagePaths[currentImageIndex]);
                 updateFrameInfo();
             }
@@ -246,7 +297,7 @@ void ofApp::exit(){
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
     switch (key) {
-        case ' ':
+        case ' ': {
             isPlaying = !isPlaying;
             playButton->setLabel(isPlaying ? "Pause" : "Play");
             // Update button color based on play state
@@ -256,16 +307,47 @@ void ofApp::keyPressed(int key){
                 playButton->setBackgroundColor(ofColor(0, 200, 0)); // Green for paused
             }
             break;
-        case 'b':
+        }
+        case 'b': {
             showBlackScreen = !showBlackScreen;
             blackScreenToggle->setChecked(showBlackScreen);
             break;
-        case 'o':
+        }
+        case 'o': {
             ofFileDialogResult result = ofSystemLoadDialog("Select folder containing images", true);
             if (result.bSuccess) {
                 folderSelected(result);
             }
             break;
+        }
+        case 'f': {
+            // Toggle forward direction
+            playDirection = FORWARD;
+            directionForwardButton->setChecked(true);
+            directionBackwardButton->setChecked(false);
+            break;
+        }
+        case 'r': {
+            // Toggle reverse direction
+            playDirection = BACKWARD;
+            directionForwardButton->setChecked(false);
+            directionBackwardButton->setChecked(true);
+            break;
+        }
+        case 'l': {
+            // Toggle loop mode
+            loopMode = LOOP;
+            loopModeButton->setChecked(true);
+            pingPongModeButton->setChecked(false);
+            break;
+        }
+        case 'p': {
+            // Toggle ping pong mode
+            loopMode = PING_PONG;
+            loopModeButton->setChecked(false);
+            pingPongModeButton->setChecked(true);
+            break;
+        }
     }
 }
 
@@ -429,14 +511,14 @@ void ofApp::folderSelected(ofFileDialogResult result) {
 
 void ofApp::loadImagesFromDirectory(string path) {
     imagePaths.clear();
-    dir.listDir(path);
-    dir.allowExt("jpg");
-    dir.allowExt("png");
-    dir.allowExt("tif");
-    dir.allowExt("tiff");
+    imageDir.listDir(path);
+    imageDir.allowExt("jpg");
+    imageDir.allowExt("png");
+    imageDir.allowExt("tif");
+    imageDir.allowExt("tiff");
     
-    for(int i = 0; i < dir.size(); i++) {
-        imagePaths.push_back(dir.getPath(i));
+    for(int i = 0; i < imageDir.size(); i++) {
+        imagePaths.push_back(imageDir.getPath(i));
     }
     
     if (!imagePaths.empty()) {
@@ -565,4 +647,45 @@ void ofApp::onScrubberEvent(ofxDatGuiSliderEvent e) {
 //--------------------------------------------------------------
 void ofApp::gotMessage(ofMessage msg){
     // Empty implementation - this is a required method in openFrameworks
+}
+
+// Add new event handlers for direction and loop mode controls
+void ofApp::onDirectionForwardEvent(ofxDatGuiToggleEvent e) {
+    if (e.checked) {
+        playDirection = FORWARD;
+        directionBackwardButton->setChecked(false);
+    } else if (!directionBackwardButton->getChecked()) {
+        // Don't allow both to be unchecked
+        directionForwardButton->setChecked(true);
+    }
+}
+
+void ofApp::onDirectionBackwardEvent(ofxDatGuiToggleEvent e) {
+    if (e.checked) {
+        playDirection = BACKWARD;
+        directionForwardButton->setChecked(false);
+    } else if (!directionForwardButton->getChecked()) {
+        // Don't allow both to be unchecked
+        directionBackwardButton->setChecked(true);
+    }
+}
+
+void ofApp::onLoopModeEvent(ofxDatGuiToggleEvent e) {
+    if (e.checked) {
+        loopMode = LOOP;
+        pingPongModeButton->setChecked(false);
+    } else if (!pingPongModeButton->getChecked()) {
+        // Don't allow both to be unchecked
+        loopModeButton->setChecked(true);
+    }
+}
+
+void ofApp::onPingPongModeEvent(ofxDatGuiToggleEvent e) {
+    if (e.checked) {
+        loopMode = PING_PONG;
+        loopModeButton->setChecked(false);
+    } else if (!loopModeButton->getChecked()) {
+        // Don't allow both to be unchecked
+        pingPongModeButton->setChecked(true);
+    }
 }
