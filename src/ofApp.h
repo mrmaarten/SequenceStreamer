@@ -147,7 +147,8 @@ public:
 	LoopMode loopMode;
 	
 	// Scrubbing variables
-	bool isScrubbing;
+	bool isScrubbing = false;
+
 	bool prevPlayState;
 	float prevPlaySpeed;
 	
