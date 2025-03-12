@@ -165,13 +165,34 @@ void ofApp::setup(){
     syphonHeightSliderGui.addListener(this, &ofApp::onSyphonHeightEvent);
     syphonGroupGui.add(&syphonHeightSliderGui);
     
+    // Add preset resolution buttons
+    syphon1080pGui.setup("1920x1080");
+    syphon1080pGui.addListener(this, &ofApp::onSyphon1080pEvent);
+    syphonGroupGui.add(&syphon1080pGui);
+    
+    syphon720pGui.setup("1280x720");
+    syphon720pGui.addListener(this, &ofApp::onSyphon720pEvent);
+    syphonGroupGui.add(&syphon720pGui);
+    
+    syphonImageResGui.setup("Image Resolution");
+    syphonImageResGui.addListener(this, &ofApp::onSyphonImageResEvent);
+    syphonGroupGui.add(&syphonImageResGui);
+    
+    syphonHalfResGui.setup("Half Image Resolution");
+    syphonHalfResGui.addListener(this, &ofApp::onSyphonHalfResEvent);
+    syphonGroupGui.add(&syphonHalfResGui);
+
+    syphonDeviderGui.setup("", "");
+    syphonGroupGui.add(&syphonDeviderGui);
+
     aspectRatioToggleGui.setup("Maintain Aspect Ratio", true);
     aspectRatioToggleGui.addListener(this, &ofApp::onAspectRatioEvent);
     syphonGroupGui.add(&aspectRatioToggleGui);
-    
+
     applySyphonSizeButtonGui.setup("Apply Size");
     applySyphonSizeButtonGui.addListener(this, &ofApp::onApplySyphonSizeEvent);
     syphonGroupGui.add(&applySyphonSizeButtonGui);
+    
     
     gui.add(&syphonGroupGui);
     
@@ -185,28 +206,28 @@ void ofApp::setup(){
     for (int i = 0; i < appDir.size(); i++) {
         ofLogNotice("ofApp") << appDir.getPath(i);
     }
+
+    ofLogNotice("ofApp") << " isPlaying: " << isPlaying;
+
 }
 
 //--------------------------------------------------------------
-void ofApp::update(){
-    // Debug print statement to confirm update is running
-    // ofLogNotice("ofApp") << "Update method called";
-    
+void ofApp::update(){    
     // Add directory watching
     float currentTime = ofGetElapsedTimef();
-    // if (!directoryPath.empty() && currentTime - lastCheckTime >= checkInterval) {
-    //     imageDir.listDir(directoryPath);
-    //     imageDir.allowExt("jpg");
-    //     imageDir.allowExt("png");
-    //     imageDir.allowExt("tif");
-    //     imageDir.allowExt("tiff");
+    if (!directoryPath.empty() && currentTime - lastCheckTime >= checkInterval) {
+        imageDir.listDir(directoryPath);
+        imageDir.allowExt("jpg");
+        imageDir.allowExt("png");
+        imageDir.allowExt("tif");
+        imageDir.allowExt("tiff");
         
-    //     // If number of files changed, reload the directory
-    //     if (imageDir.size() != imagePaths.size()) {
-    //         loadImagesFromDirectory(directoryPath);
-    //     }
-    //     lastCheckTime = currentTime;
-    // }
+        // If number of files changed, reload the directory
+        if (imageDir.size() != imagePaths.size()) {
+            loadImagesFromDirectory(directoryPath);
+        }
+        lastCheckTime = currentTime;
+    }
 
     if (isPlaying && !showBlackScreen && !imagePaths.empty() && speedSliderGui > 0.0f) {
         float frameTime = 1.0f / (BASE_FPS * convertSliderToSpeed(speedSliderGui));
@@ -439,33 +460,7 @@ void ofApp::mouseMoved(int x, int y){
 
 //--------------------------------------------------------------
 void ofApp::mouseDragged(int x, int y, int button){
-    // Check if we're scrubbing
-    if (isScrubbing) {
-        // Calculate position within the scrubber bar
-        // ofxGui doesn't have getX() and getY() methods, so we need to use a different approach
-        ofRectangle scrubberRect = scrubberSliderGui.getShape();
-        float barX = scrubberRect.x;
-        float barWidth = scrubberRect.width;
-        
-        if (x >= barX && x <= barX + barWidth) {
-            float percentage = (x - barX) / barWidth;
-            percentage = ofClamp(percentage, 0.0f, 1.0f);
-            
-            // Calculate frame index based on percentage
-            int frameIndex = rangeStart + round(percentage * (rangeEnd - rangeStart));
-            frameIndex = ofClamp(frameIndex, rangeStart, rangeEnd);
-            
-            // Update current frame
-            if (frameIndex != currentImageIndex && frameIndex < imagePaths.size()) {
-                currentImageIndex = frameIndex;
-                currentImage.load(imagePaths[currentImageIndex]);
-                updateFrameInfo();
-            }
-            
-            // Update scrubber position
-            scrubberSliderGui = percentage;
-        }
-    } else if(y >= ofGetHeight() - 60 && y <= ofGetHeight() - 10 && x >= 10 && x <= UI_PANEL_WIDTH - 10) {
+    if(y >= ofGetHeight() - 60 && y <= ofGetHeight() - 10 && x >= 10 && x <= UI_PANEL_WIDTH - 10) {
         // More precise check for the drop zone rectangle
         ofFileDialogResult result = ofSystemLoadDialog("Select folder containing images", true);
         if(result.bSuccess) {
@@ -476,57 +471,12 @@ void ofApp::mouseDragged(int x, int y, int button){
 
 //--------------------------------------------------------------
 void ofApp::mousePressed(int x, int y, int button){
-    // Create mouse event args
-    ofMouseEventArgs args;
-    args.x = x;
-    args.y = y;
-    args.button = button;
-    
-    // Log unconditionally at the start
-    ofLogVerbose("ofApp") << "Mouse pressed at (" << x << ", " << y << ")";
-    
-    // Let the GUI handle the event
-    bool guiHandled = gui.mousePressed(args);
-    ofLogNotice("ofApp") << "GUI handled: " << (guiHandled ? "Yes" : "No");
-    
-    if(guiHandled) {
-        // Check if the press was on the scrubber slider
-        ofRectangle scrubberArea = scrubberSliderGui.getShape();
-        ofLogNotice("ofApp") << "Scrubber area: " << scrubberArea;
-        if(scrubberArea.inside(x, y)) {
-            isScrubbing = true;
-            ofLogNotice("ofApp") << "Scrubbing started";
-            // Store initial scrub state
-            prevPlayState = isPlaying;
-            prevPlaySpeed = speedSliderGui;
-            isPlaying = false;
-        }
-    }
+   
 }
 
 //--------------------------------------------------------------
 void ofApp::mouseReleased(int x, int y, int button){
-    // Log unconditionally at the start
-    ofLogVerbose("ofApp") << "Mouse released at (" << x << ", " << y << ")";
-    
-    // Create mouse event args
-    ofMouseEventArgs args;
-    args.x = x;
-    args.y = y;
-    args.button = button;
-    
-    // Let the GUI handle the event first
-    bool guiHandled = gui.mouseReleased(args);
-    ofLogNotice("ofApp") << "GUI handled release: " << (guiHandled ? "Yes" : "No");
-    
-    // Restore playback state if scrubbing was happening
-    if (isScrubbing) {
-        isScrubbing = false;
-        isPlaying = prevPlayState;
-        speedSliderGui = prevPlaySpeed;
-        playButtonGui.setName(isPlaying ? "Pause" : "Play");
-        ofLogNotice("ofApp") << "Scrubbing ended. Playback restored: " << (isPlaying ? "Playing" : "Paused");
-    }
+   
 }
 
 //--------------------------------------------------------------
@@ -700,19 +650,14 @@ void ofApp::onPingPongModeEvent(bool & value){
 }
 
 void ofApp::onScrubberEvent(float & value){
-    // ofLogNotice("ofApp") << "onScrubberEvent interacted with - value: " << value;
-    
     // Only pause if we're not already scrubbing
-    if(!isScrubbing) {
-        prevPlayState = isPlaying;
-        prevPlaySpeed = speedSliderGui;
-        isPlaying = false;
-        playButtonGui.setName("Play");
-        isScrubbing = true;
-        
-        ofLogNotice("ofApp") << "onScrubberEvent interaction started";
-        ofLogNotice("ofApp") << "onScrubberEvent isPlaying: " << isPlaying;
-    }
+    // if(!isScrubbing) {
+    //     prevPlayState = isPlaying;
+    //     prevPlaySpeed = speedSliderGui;
+    //     isPlaying = false;
+    //     playButtonGui.setName("Play");
+    //     isScrubbing = true;
+    // }
     
     // Calculate frame index based on scrubber value
     int frameIndex = rangeStart + round(value * (rangeEnd - rangeStart));
@@ -807,5 +752,33 @@ void ofApp::onOpenFolderEvent(){
     ofFileDialogResult result = ofSystemLoadDialog("Select folder containing images", true);
     if(result.bSuccess) {
         folderSelected(result);
+    }
+}
+
+void ofApp::onSyphon1080pEvent() {
+    syphonWidthSliderGui = 1920;
+    syphonHeightSliderGui = 1080;
+    syphonFbo.allocate(syphonWidth, syphonHeight, GL_RGBA);
+}
+
+void ofApp::onSyphon720pEvent() {
+    syphonWidthSliderGui = 1280;
+    syphonHeightSliderGui = 720;
+    syphonFbo.allocate(syphonWidth, syphonHeight, GL_RGBA);
+}
+
+void ofApp::onSyphonImageResEvent() {
+    if (!imagePaths.empty() && currentImage.isAllocated()) {
+        syphonWidthSliderGui = currentImage.getWidth();
+        syphonHeightSliderGui = currentImage.getHeight();
+        syphonFbo.allocate(syphonWidth, syphonHeight, GL_RGBA);
+    }
+}
+
+void ofApp::onSyphonHalfResEvent() {
+    if (!imagePaths.empty() && currentImage.isAllocated()) {
+        syphonWidthSliderGui = currentImage.getWidth() / 2;
+        syphonHeightSliderGui = currentImage.getHeight() / 2;
+        syphonFbo.allocate(syphonWidth, syphonHeight, GL_RGBA);
     }
 }

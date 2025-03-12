@@ -16,10 +16,17 @@ This app is on mac with _openFrameworks_. The app is as follows:
 https://github.com/braitsch/ofxDatGui
 - ping pong toggle
 - remember last speed: use that to toggle pause and play
+- play last x frames: 5, 10, 100, user input
 
 Todo
+test if this builds first:
+- better ui with https://github.com/jvcleave/ofxImGui
+
+Nice to have:
 - brightness slider
 - contrast slider
 - saturation slider
 
-- play last x frames: 5, 10, 100, user input
+Nice to have:
+- canon camera interaction 
+https://github.com/elliotwoods/ofxCanon

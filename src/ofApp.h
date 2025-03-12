@@ -57,6 +57,10 @@ public:
 	void onLast100FramesEvent();
 	void onCustomLastFramesEvent(int & value);
 	void onOpenFolderEvent();
+	void onSyphon1080pEvent();
+	void onSyphon720pEvent();
+	void onSyphonImageResEvent();
+	void onSyphonHalfResEvent();
 	
 	// Constants
 	static const float BASE_FPS;
@@ -127,6 +131,11 @@ public:
 	ofxIntSlider syphonHeightSliderGui;
 	ofxToggle aspectRatioToggleGui;
 	ofxButton applySyphonSizeButtonGui;
+	ofxLabel syphonDeviderGui;
+	ofxButton syphon1080pGui;
+	ofxButton syphon720pGui;
+	ofxButton syphonImageResGui;
+	ofxButton syphonHalfResGui;
 	
 	// Image and playback variables
 	ofImage currentImage;
@@ -137,7 +146,7 @@ public:
 	int currentImageIndex;
 	float playbackSpeed;
 	float lastImageTime;
-	bool isPlaying;
+	bool isPlaying = false;
 	bool showBlackScreen;
 	int rangeStart;
 	int rangeEnd;
