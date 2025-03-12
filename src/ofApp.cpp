@@ -367,7 +367,7 @@ void ofApp::draw(){
     
     // Add a visual cue for the drop zone
     ofSetColor(120);
-    ofDrawBitmapString("Drop folder here open", 20, ofGetHeight() - 45);
+    ofDrawBitmapString("Drop folder here to open", 20, ofGetHeight() - 45);
     
     ofPopStyle();
 }
