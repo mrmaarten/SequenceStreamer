@@ -1,2 +1,2 @@
-ofxDatGui
+ofxGui
 ofxSyphon

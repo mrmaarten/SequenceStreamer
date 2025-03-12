@@ -1,30 +1,16 @@
 #pragma once
 
 #include "ofMain.h"
-#include "ofxDatGuiCustom.h"
-#include "ofxDatGui.h"
+#include "ofxGui.h"
 #include "ofxSyphon.h"
 
 class ofApp : public ofBaseApp {
 public:
-	// Playback direction enum
-	enum PlayDirection {
-		FORWARD,
-		BACKWARD
-	};
-	
-	// Loop mode enum
-	enum LoopMode {
-		LOOP,
-		PING_PONG
-	};
-	
 	void setup();
 	void update();
 	void draw();
 	void exit();
 	
-	// UI Events
 	void keyPressed(int key);
 	void keyReleased(int key);
 	void mouseMoved(int x, int y);
@@ -38,116 +24,137 @@ public:
 	void gotMessage(ofMessage msg);
 	void mouseScrolled(int x, int y, float scrollX, float scrollY);
 	
-	void folderSelected(ofFileDialogResult openFileResult);
-	
-	// Image handling
+	// Helper methods
+	void folderSelected(ofFileDialogResult result);
 	void loadImagesFromDirectory(string path);
 	void updateImageRange();
 	void updateFrameInfo();
-	
-	// Variables
-	string directoryPath;
-	vector<string> imagePaths;
-	ofImage currentImage;
-	
-	// Playback control
-	int currentImageIndex;
-	float playbackSpeed; // in seconds
-	float lastImageTime;
-	bool isPlaying;
-	bool showBlackScreen;
-	
-	// Range control
-	int rangeStart;
-	int rangeEnd;
-	
-	// Syphon
-	ofxSyphonServer syphonServer;
-	
-	// UI Event Handlers
-	void onPlayButtonEvent(ofxDatGuiButtonEvent e);
-	void onSpeedSliderEvent(ofxDatGuiSliderEvent e);
-	void onStartFrameEvent(ofxDatGuiSliderEvent e);
-	void onEndFrameEvent(ofxDatGuiSliderEvent e);
-	void onBlackScreenToggleEvent(ofxDatGuiToggleEvent e);
-	void onSyphonWidthEvent(ofxDatGuiTextInputEvent e);
-	void onSyphonHeightEvent(ofxDatGuiTextInputEvent e);
-	void onAspectRatioEvent(ofxDatGuiToggleEvent e);
-	void onApplySyphonSizeEvent(ofxDatGuiButtonEvent e);
-	void onSpeedButtonEvent(ofxDatGuiButtonEvent e);
-	void onScrubberEvent(ofxDatGuiSliderEvent e);
-	void onLastFramesButtonEvent(ofxDatGuiButtonEvent e);
-	void onLastFramesInputEvent(ofxDatGuiTextInputEvent e);
-	
-	// New event handlers for direction and loop mode
-	void onDirectionForwardEvent(ofxDatGuiToggleEvent e);
-	void onDirectionBackwardEvent(ofxDatGuiToggleEvent e);
-	void onLoopModeEvent(ofxDatGuiToggleEvent e);
-	void onPingPongModeEvent(ofxDatGuiToggleEvent e);
-	
-	// GUI elements
-	ofxDatGui* gui;
-	ofxDatGuiButton* playButton;
-	ofxDatGuiSlider* speedSlider;
-	ofxDatGuiSlider* scrubberBar;
-	ofxDatGuiSlider* startFrameSlider;
-	ofxDatGuiSlider* endFrameSlider;
-	ofxDatGuiLabel* currentFrameLabel;
-	ofxDatGuiToggle* blackScreenToggle;
-	ofxDatGuiTextInput* syphonWidthInput;
-	ofxDatGuiTextInput* syphonHeightInput;
-	ofxDatGuiToggle* aspectRatioToggle;
-	ofxDatGuiButton* applySyphonSizeButton;
-	vector<ofxDatGuiButton*> speedButtons;
-	
-	// New GUI elements for direction and loop mode
-	ofxDatGuiToggle* directionForwardButton;
-	ofxDatGuiToggle* directionBackwardButton;
-	ofxDatGuiToggle* loopModeButton;
-	ofxDatGuiToggle* pingPongModeButton;
-	
-	// Playback variables
-	PlayDirection playDirection;
-	LoopMode loopMode;
-	
-	// Directory watching
-	float lastCheckTime;
-	float checkInterval; // how often to check for new files (in seconds)
-	string displayPath; // Shortened version of directoryPath for display
-	
-	// UI Layout
-	const int UI_PANEL_WIDTH = 332; 
-	ofRectangle uiPanel;
-	ofRectangle previewPanel;
-	
-	const float BASE_FPS = 12.0f;  // 1.0 on slider = 12fps
-	const float MIN_SPEED = 0.2f;
-	const float MAX_SPEED = 4.0f;  
-	const float DEFAULT_SPEED = 1.0f;
-	const float SLIDER_MIDPOINT = 0.667f;  // 2/3 point where speed = 1.0
-	
-	// Speed conversion helpers
+	void setLastXFrames(int numFrames);
 	float convertSliderToSpeed(float sliderValue);
 	float convertSpeedToSlider(float speed);
 	
-	// Syphon output handling
+	// Event handlers for ofxGui
+	void onPlayButtonEvent();
+	void onSpeedSliderEvent(float & value);
+	void onSpeed02xEvent();
+	void onSpeed05xEvent();
+	void onSpeed1xEvent();
+	void onSpeed2xEvent();
+	void onDirectionForwardEvent(bool & value);
+	void onDirectionBackwardEvent(bool & value);
+	void onLoopModeEvent(bool & value);
+	void onPingPongModeEvent(bool & value);
+	void onScrubberEvent(float & value);
+	void onStartFrameEvent(int & value);
+	void onEndFrameEvent(int & value);
+	void onBlackScreenToggleEvent(bool & value);
+	void onSyphonWidthEvent(int & value);
+	void onSyphonHeightEvent(int & value);
+	void onAspectRatioEvent(bool & value);
+	void onApplySyphonSizeEvent();
+	void onLast5FramesEvent();
+	void onLast10FramesEvent();
+	void onLast100FramesEvent();
+	void onCustomLastFramesEvent(int & value);
+	void onOpenFolderEvent();
+	
+	// Constants
+	static const float BASE_FPS;
+	static const float MAX_SPEED;
+	static const float SLIDER_MIDPOINT;
+	static const int UI_PANEL_WIDTH = 300;
+	
+	// Playback direction enum
+	enum Direction {
+		FORWARD,
+		BACKWARD
+	};
+	
+	// Loop mode enum
+	enum LoopMode {
+		LOOP,
+		PING_PONG
+	};
+	
+	// UI layout
+	ofRectangle uiPanel;
+	ofRectangle previewPanel;
+	
+	// ofxGui elements
+	ofxPanel gui;
+	ofxButton playButtonGui;
+	ofxFloatSlider speedSliderGui;
+	ofxButton openFolderButtonGui;
+	
+	// Speed presets
+	ofxPanel speedPresetsGui;
+	ofxButton speed02xGui;
+	ofxButton speed05xGui;
+	ofxButton speed1xGui;
+	ofxButton speed2xGui;
+	
+	// Direction controls
+	ofxPanel directionGroupGui;
+	ofxToggle directionForwardGui;
+	ofxToggle directionBackwardGui;
+	
+	// Loop mode controls
+	ofxPanel loopGroupGui;
+	ofxToggle loopModeToggleGui;
+	ofxToggle pingPongModeToggleGui;
+	
+	// Scrubber
+	ofxFloatSlider scrubberSliderGui;
+	
+	// Frame range controls
+	ofxIntSlider startFrameSliderGui;
+	ofxIntSlider endFrameSliderGui;
+	
+	// Last frames controls
+	ofxPanel lastFramesGroupGui;
+	ofxButton last5FramesGui;
+	ofxButton last10FramesGui;
+	ofxButton last100FramesGui;
+	ofxIntSlider customLastFramesGui;
+	
+	// Display and toggles
+	ofxLabel currentFrameLabelGui;
+	ofxToggle blackScreenToggleGui;
+	
+	// Syphon controls
+	ofxPanel syphonGroupGui;
+	ofxIntSlider syphonWidthSliderGui;
+	ofxIntSlider syphonHeightSliderGui;
+	ofxToggle aspectRatioToggleGui;
+	ofxButton applySyphonSizeButtonGui;
+	
+	// Image and playback variables
+	ofImage currentImage;
+	vector<string> imagePaths;
+	ofDirectory imageDir;
+	string directoryPath;
+	string displayPath;
+	int currentImageIndex;
+	float playbackSpeed;
+	float lastImageTime;
+	bool isPlaying;
+	bool showBlackScreen;
+	int rangeStart;
+	int rangeEnd;
+	float lastCheckTime;
+	float checkInterval;
+	Direction playDirection;
+	LoopMode loopMode;
+	
+	// Scrubbing variables
+	bool isScrubbing;
+	bool prevPlayState;
+	float prevPlaySpeed;
+	
+	// Syphon variables
+	ofxSyphonServer syphonServer;
 	ofFbo syphonFbo;
 	int syphonWidth;
 	int syphonHeight;
 	bool maintainAspectRatio;
-	
-	// Playback variables
-	bool isScrubbing = false;
-	bool prevPlayState = false;
-	float prevPlaySpeed = 1.0f;
-	
-	// Changed from 'dir' to 'imageDir'
-	ofDirectory imageDir;
-	
-	// New GUI elements for last frames functionality
-	vector<ofxDatGuiButton*> lastFramesButtons;
-	ofxDatGuiTextInput* lastFramesInput;
-	
-	// Helper function for setting last X frames
-	void setLastXFrames(int numFrames);
 };

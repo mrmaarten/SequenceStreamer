@@ -1,7 +1,25 @@
 #include "ofApp.h"
+// Remove ofxDatGui include, keep only ofxGui
+#include "ofxGui.h"
+
+// Constants
+const float ofApp::SLIDER_MIDPOINT = 0.5f;
+const float ofApp::BASE_FPS = 30.0f;
+const float ofApp::MAX_SPEED = 4.0f;
 
 //--------------------------------------------------------------
 void ofApp::setup(){
+    // Add detailed logging for resource loading
+    ofSetLogLevel(OF_LOG_VERBOSE);
+    ofLogNotice("ofApp") << "Starting application setup";
+    
+    // Get the executable path to help with debugging
+    string executablePath = ofFilePath::getCurrentExeDir();
+    ofLogNotice("ofApp") << "Executable path: " << executablePath;
+    
+    // Remove all ofxDatGui asset loading code
+    // Remove lines from "DIRECT APPROACH" through the theme setup
+    
     // Initialize variables
     currentImageIndex = 0;
     playbackSpeed = 1.0;
@@ -28,101 +46,146 @@ void ofApp::setup(){
     uiPanel = ofRectangle(0, 0, UI_PANEL_WIDTH, ofGetHeight());
     previewPanel = ofRectangle(UI_PANEL_WIDTH, 0, ofGetWidth() - UI_PANEL_WIDTH, ofGetHeight());
     
-    // Setup DatGui
-    gui = new ofxDatGui(10, 10);
-    gui->setWidth(UI_PANEL_WIDTH - 20);
+    // Setup ofxGui
+    gui.setup("Frame Player");
+    gui.setPosition(10, 10);
+    gui.setSize(UI_PANEL_WIDTH - 20, 30);
+    
+    // Add open folder button at the top
+    openFolderButtonGui.setup("Open Folder");
+    openFolderButtonGui.addListener(this, &ofApp::onOpenFolderEvent);
+    gui.add(&openFolderButtonGui);
     
     // Add controls
-    playButton = gui->addButton("Play");
-    playButton->onButtonEvent(this, &ofApp::onPlayButtonEvent);
-    playButton->setBackgroundColor(ofColor(0, 200, 0)); // Initial green color for paused
+    playButtonGui.setup("Play");
+    playButtonGui.addListener(this, &ofApp::onPlayButtonEvent);
+    gui.add(&playButtonGui);
     
-    speedSlider = gui->addSlider("Speed", 0.0f, MAX_SPEED, DEFAULT_SPEED);
-    speedSlider->onSliderEvent(this, &ofApp::onSpeedSliderEvent);
+    speedSliderGui.setup("Speed", 1.0f, 0.0f, MAX_SPEED);
+    speedSliderGui.addListener(this, &ofApp::onSpeedSliderEvent);
+    gui.add(&speedSliderGui);
     
-    // Add speed buttons
-    vector<float> speeds = {0.2, 0.5, 1.0, 2.0};
-    vector<string> labels = {"0.2x", "0.5x", "1x", "2x"};
-    for(int i = 0; i < speeds.size(); i++) {
-        ofxDatGuiButton* button = gui->addButton(labels[i]);
-        button->setWidth(UI_PANEL_WIDTH/4 - 5);
-        button->onButtonEvent(this, &ofApp::onSpeedButtonEvent);
-        speedButtons.push_back(button);
-    }
+    // Add speed preset buttons
+    speedPresetsGui.setup("Speed Presets");
+    speed02xGui.setup("0.2x");
+    speed02xGui.addListener(this, &ofApp::onSpeed02xEvent);
+    speedPresetsGui.add(&speed02xGui);
+    
+    speed05xGui.setup("0.5x");
+    speed05xGui.addListener(this, &ofApp::onSpeed05xEvent);
+    speedPresetsGui.add(&speed05xGui);
+    
+    speed1xGui.setup("1x");
+    speed1xGui.addListener(this, &ofApp::onSpeed1xEvent);
+    speedPresetsGui.add(&speed1xGui);
+    
+    speed2xGui.setup("2x");
+    speed2xGui.addListener(this, &ofApp::onSpeed2xEvent);
+    speedPresetsGui.add(&speed2xGui);
+    
+    gui.add(&speedPresetsGui);
     
     // Add playback direction controls
-    gui->addLabel("Playback Direction");
-    directionForwardButton = gui->addToggle("Forward");
-    directionForwardButton->setChecked(playDirection == FORWARD);
-    directionForwardButton->onToggleEvent(this, &ofApp::onDirectionForwardEvent);
+    directionGroupGui.setup("Playback Direction");
+    directionForwardGui.setup("Forward", true);
+    directionForwardGui.addListener(this, &ofApp::onDirectionForwardEvent);
+    directionGroupGui.add(&directionForwardGui);
     
-    directionBackwardButton = gui->addToggle("Backward");
-    directionBackwardButton->setChecked(playDirection == BACKWARD);
-    directionBackwardButton->onToggleEvent(this, &ofApp::onDirectionBackwardEvent);
+    directionBackwardGui.setup("Backward", false);
+    directionBackwardGui.addListener(this, &ofApp::onDirectionBackwardEvent);
+    directionGroupGui.add(&directionBackwardGui);
+    
+    gui.add(&directionGroupGui);
     
     // Add loop mode controls
-    gui->addLabel("Loop Mode");
-    loopModeButton = gui->addToggle("Loop");
-    loopModeButton->setChecked(loopMode == LOOP);
-    loopModeButton->onToggleEvent(this, &ofApp::onLoopModeEvent);
+    loopGroupGui.setup("Loop Mode");
+    loopModeToggleGui.setup("Loop", true);
+    loopModeToggleGui.addListener(this, &ofApp::onLoopModeEvent);
+    loopGroupGui.add(&loopModeToggleGui);
     
-    pingPongModeButton = gui->addToggle("Ping Pong");
-    pingPongModeButton->setChecked(loopMode == PING_PONG);
-    pingPongModeButton->onToggleEvent(this, &ofApp::onPingPongModeEvent);
+    pingPongModeToggleGui.setup("Ping Pong", false);
+    pingPongModeToggleGui.addListener(this, &ofApp::onPingPongModeEvent);
+    loopGroupGui.add(&pingPongModeToggleGui);
     
-    // Add scrubber bar instead of empty line
-    scrubberBar = gui->addSlider("", 0, 1, 0);
-    scrubberBar->setLabel("Scrub");
-    scrubberBar->onSliderEvent(this, &ofApp::onScrubberEvent);
+    gui.add(&loopGroupGui);
     
-    startFrameSlider = gui->addSlider("Start Frame", 1, 1, 1);
-    startFrameSlider->onSliderEvent(this, &ofApp::onStartFrameEvent);
-    startFrameSlider->setPrecision(0);
+    // Add scrubber bar
+    scrubberSliderGui.setup("Scrub", 0, 0, 1);
+    scrubberSliderGui.addListener(this, &ofApp::onScrubberEvent);
+    gui.add(&scrubberSliderGui);
     
-    endFrameSlider = gui->addSlider("End Frame", 1, 1, 1);
-    endFrameSlider->onSliderEvent(this, &ofApp::onEndFrameEvent);
-    endFrameSlider->setPrecision(0);
+    // Add frame range controls
+    startFrameSliderGui.setup("Start Frame", 1, 1, 1);
+    startFrameSliderGui.addListener(this, &ofApp::onStartFrameEvent);
+    gui.add(&startFrameSliderGui);
+    
+    endFrameSliderGui.setup("End Frame", 1, 1, 1);
+    endFrameSliderGui.addListener(this, &ofApp::onEndFrameEvent);
+    gui.add(&endFrameSliderGui);
     
     // Add "Play Last X Frames" controls
+    lastFramesGroupGui.setup("Play Last X Frames");
     
-    // Create a row of buttons for preset values
-    vector<int> lastFramePresets = {5, 10, 100};
-    for(int i = 0; i < lastFramePresets.size(); i++) {
-        ofxDatGuiButton* button = gui->addButton("Play Last " + ofToString(lastFramePresets[i]));
-        button->setWidth((UI_PANEL_WIDTH - 20) / 3);
-        button->onButtonEvent(this, &ofApp::onLastFramesButtonEvent);
-        lastFramesButtons.push_back(button);
-    }
+    last5FramesGui.setup("Last 5");
+    last5FramesGui.addListener(this, &ofApp::onLast5FramesEvent);
+    lastFramesGroupGui.add(&last5FramesGui);
     
-    // Add custom input for last frames
-    lastFramesInput = gui->addTextInput("Play Last X Frames", "");
-    lastFramesInput->setInputType(ofxDatGuiInputType::NUMERIC);
-    lastFramesInput->onTextInputEvent(this, &ofApp::onLastFramesInputEvent);
+    last10FramesGui.setup("Last 10");
+    last10FramesGui.addListener(this, &ofApp::onLast10FramesEvent);
+    lastFramesGroupGui.add(&last10FramesGui);
     
-    currentFrameLabel = gui->addLabel("Frame: 0/0");
+    last100FramesGui.setup("Last 100");
+    last100FramesGui.addListener(this, &ofApp::onLast100FramesEvent);
+    lastFramesGroupGui.add(&last100FramesGui);
     
-    blackScreenToggle = gui->addToggle("Black Screen");
-    blackScreenToggle->onToggleEvent(this, &ofApp::onBlackScreenToggleEvent);
+    gui.add(&lastFramesGroupGui);
+    
+    // Custom input for last frames (ofxGui doesn't have text input, using slider instead)
+    customLastFramesGui.setup("Custom Last Frames", 10, 1, 1000);
+    customLastFramesGui.addListener(this, &ofApp::onCustomLastFramesEvent);
+    gui.add(&customLastFramesGui);
+    
+    // Current frame display (using a label)
+    currentFrameLabelGui.setup("Frame", "0/0");
+    gui.add(&currentFrameLabelGui);
+    
+    // Black screen toggle
+    blackScreenToggleGui.setup("Black Screen", false);
+    blackScreenToggleGui.addListener(this, &ofApp::onBlackScreenToggleEvent);
+    gui.add(&blackScreenToggleGui);
     
     // Add Syphon controls
-    gui->addLabel("Syphon Settings");
-    syphonWidthInput = gui->addTextInput("Width", "1920");
-    syphonWidthInput->setInputType(ofxDatGuiInputType::NUMERIC);
-    syphonWidthInput->onTextInputEvent(this, &ofApp::onSyphonWidthEvent);
+    syphonGroupGui.setup("Syphon Settings");
     
-    syphonHeightInput = gui->addTextInput("Height", "1080");
-    syphonHeightInput->setInputType(ofxDatGuiInputType::NUMERIC);
-    syphonHeightInput->onTextInputEvent(this, &ofApp::onSyphonHeightEvent);
+    // ofxGui doesn't have text input, using sliders instead
+    syphonWidthSliderGui.setup("Width", 1920, 320, 3840);
+    syphonWidthSliderGui.addListener(this, &ofApp::onSyphonWidthEvent);
+    syphonGroupGui.add(&syphonWidthSliderGui);
     
-    aspectRatioToggle = gui->addToggle("Maintain Aspect Ratio");
-    aspectRatioToggle->setChecked(maintainAspectRatio);
-    aspectRatioToggle->onToggleEvent(this, &ofApp::onAspectRatioEvent);
+    syphonHeightSliderGui.setup("Height", 1080, 240, 2160);
+    syphonHeightSliderGui.addListener(this, &ofApp::onSyphonHeightEvent);
+    syphonGroupGui.add(&syphonHeightSliderGui);
     
-    applySyphonSizeButton = gui->addButton("Apply Size");
-    applySyphonSizeButton->onButtonEvent(this, &ofApp::onApplySyphonSizeEvent);
+    aspectRatioToggleGui.setup("Maintain Aspect Ratio", true);
+    aspectRatioToggleGui.addListener(this, &ofApp::onAspectRatioEvent);
+    syphonGroupGui.add(&aspectRatioToggleGui);
+    
+    applySyphonSizeButtonGui.setup("Apply Size");
+    applySyphonSizeButtonGui.addListener(this, &ofApp::onApplySyphonSizeEvent);
+    syphonGroupGui.add(&applySyphonSizeButtonGui);
+    
+    gui.add(&syphonGroupGui);
     
     // Set initial display path
     displayPath = "Drop folder here or click Open";
+    
+    // Log the app bundle structure
+    ofLogNotice("ofApp") << "Listing app bundle contents:";
+    ofDirectory appDir;
+    appDir.listDir(ofToDataPath("../Resources/"));
+    for (int i = 0; i < appDir.size(); i++) {
+        ofLogNotice("ofApp") << appDir.getPath(i);
+    }
 }
 
 //--------------------------------------------------------------
@@ -143,11 +206,8 @@ void ofApp::update(){
         lastCheckTime = currentTime;
     }
 
-    // Update GUI
-    gui->update();
-
-    if (isPlaying && !showBlackScreen && !imagePaths.empty() && speedSlider->getValue() > 0.0f) {
-        float frameTime = 1.0f / (BASE_FPS * convertSliderToSpeed(speedSlider->getValue()));
+    if (isPlaying && !showBlackScreen && !imagePaths.empty() && speedSliderGui > 0.0f) {
+        float frameTime = 1.0f / (BASE_FPS * convertSliderToSpeed(speedSliderGui));
         currentTime = ofGetElapsedTimef();
         
         if (currentTime - lastImageTime >= frameTime) {
@@ -163,8 +223,8 @@ void ofApp::update(){
                         currentImageIndex = rangeEnd - 1;
                         if (currentImageIndex < rangeStart) currentImageIndex = rangeStart;
                         playDirection = BACKWARD;
-                        directionForwardButton->setChecked(false);
-                        directionBackwardButton->setChecked(true);
+                        directionForwardGui = false;
+                        directionBackwardGui = true;
                     }
                 }
             } else { // BACKWARD
@@ -178,8 +238,8 @@ void ofApp::update(){
                         currentImageIndex = rangeStart + 1;
                         if (currentImageIndex > rangeEnd) currentImageIndex = rangeEnd;
                         playDirection = FORWARD;
-                        directionForwardButton->setChecked(true);
-                        directionBackwardButton->setChecked(false);
+                        directionForwardGui = true;
+                        directionBackwardGui = false;
                     }
                 }
             }
@@ -199,7 +259,7 @@ void ofApp::update(){
         if (rangeEnd > rangeStart) {
             scrubberPos = (float)(currentImageIndex - rangeStart) / (rangeEnd - rangeStart);
         }
-        scrubberBar->setValue(scrubberPos);
+        scrubberSliderGui = scrubberPos;
     }
 }
 
@@ -288,7 +348,7 @@ void ofApp::draw(){
     }
     
     // Draw GUI
-    gui->draw();
+    gui.draw();
     
     // Draw drop zone
     ofPushStyle();
@@ -305,6 +365,10 @@ void ofApp::draw(){
     }
     ofDrawBitmapString(pathToShow, 20, ofGetHeight() - 30);
     
+    // Add a visual cue for the drop zone
+    ofSetColor(120);
+    ofDrawBitmapString("Drop folder here or click to open", 20, ofGetHeight() - 45);
+    
     ofPopStyle();
 }
 
@@ -318,53 +382,44 @@ void ofApp::keyPressed(int key){
     switch (key) {
         case ' ': {
             isPlaying = !isPlaying;
-            playButton->setLabel(isPlaying ? "Pause" : "Play");
-            // Update button color based on play state
-            if(isPlaying) {
-                playButton->setBackgroundColor(ofColor(255, 128, 0)); // Orange for playing
-            } else {
-                playButton->setBackgroundColor(ofColor(0, 200, 0)); // Green for paused
-            }
+            playButtonGui.setName(isPlaying ? "Pause" : "Play");
             break;
         }
         case 'b': {
             showBlackScreen = !showBlackScreen;
-            blackScreenToggle->setChecked(showBlackScreen);
+            blackScreenToggleGui = showBlackScreen;
             break;
         }
         case 'o': {
-            ofFileDialogResult result = ofSystemLoadDialog("Select folder containing images", true);
-            if (result.bSuccess) {
-                folderSelected(result);
-            }
+            onOpenFolderEvent();
             break;
         }
         case 'f': {
             // Toggle forward direction
             playDirection = FORWARD;
-            directionForwardButton->setChecked(true);
-            directionBackwardButton->setChecked(false);
+            directionForwardGui = true;
+            directionBackwardGui = false;
             break;
         }
         case 'r': {
             // Toggle reverse direction
             playDirection = BACKWARD;
-            directionForwardButton->setChecked(false);
-            directionBackwardButton->setChecked(true);
+            directionForwardGui = false;
+            directionBackwardGui = true;
             break;
         }
         case 'l': {
             // Toggle loop mode
             loopMode = LOOP;
-            loopModeButton->setChecked(true);
-            pingPongModeButton->setChecked(false);
+            loopModeToggleGui = true;
+            pingPongModeToggleGui = false;
             break;
         }
         case 'p': {
             // Toggle ping pong mode
             loopMode = PING_PONG;
-            loopModeButton->setChecked(false);
-            pingPongModeButton->setChecked(true);
+            loopModeToggleGui = false;
+            pingPongModeToggleGui = true;
             break;
         }
     }
@@ -385,10 +440,10 @@ void ofApp::mouseDragged(int x, int y, int button){
     // Check if we're scrubbing
     if (isScrubbing) {
         // Calculate position within the scrubber bar
-        float barX = scrubberBar->getX();
-        float barY = scrubberBar->getY();
-        float barWidth = scrubberBar->getWidth();
-        float barHeight = scrubberBar->getHeight();
+        // ofxGui doesn't have getX() and getY() methods, so we need to use a different approach
+        ofRectangle scrubberRect = scrubberSliderGui.getShape();
+        float barX = scrubberRect.x;
+        float barWidth = scrubberRect.width;
         
         if (x >= barX && x <= barX + barWidth) {
             float percentage = (x - barX) / barWidth;
@@ -406,9 +461,10 @@ void ofApp::mouseDragged(int x, int y, int button){
             }
             
             // Update scrubber position
-            scrubberBar->setValue(percentage);
+            scrubberSliderGui = percentage;
         }
-    } else if(y > ofGetHeight() - 60 && x < UI_PANEL_WIDTH) {
+    } else if(y >= ofGetHeight() - 60 && y <= ofGetHeight() - 10 && x >= 10 && x <= UI_PANEL_WIDTH - 10) {
+        // More precise check for the drop zone rectangle
         ofFileDialogResult result = ofSystemLoadDialog("Select folder containing images", true);
         if(result.bSuccess) {
             folderSelected(result);
@@ -419,22 +475,19 @@ void ofApp::mouseDragged(int x, int y, int button){
 //--------------------------------------------------------------
 void ofApp::mousePressed(int x, int y, int button){
     // Check if click is within scrubber bar
-    float barX = scrubberBar->getX();
-    float barY = scrubberBar->getY();
-    float barWidth = scrubberBar->getWidth();
-    float barHeight = scrubberBar->getHeight();
+    ofRectangle scrubberRect = scrubberSliderGui.getShape();
+    float barX = scrubberRect.x;
+    float barWidth = scrubberRect.width;
     
-    if (x >= barX && x <= barX + barWidth &&
-        y >= barY && y <= barY + barHeight) {
+    if (x >= barX && x <= barX + barWidth) {
         
         // Store current playback state
         prevPlayState = isPlaying;
-        prevPlaySpeed = speedSlider->getValue();
+        prevPlaySpeed = speedSliderGui;
         
         // Pause playback during scrubbing
         isPlaying = false;
-        playButton->setLabel("Play");
-        playButton->setBackgroundColor(ofColor(0, 200, 0));
+        playButtonGui.setName("Play");
         
         // Set scrubbing flag
         isScrubbing = true;
@@ -455,8 +508,9 @@ void ofApp::mousePressed(int x, int y, int button){
         }
         
         // Update scrubber position
-        scrubberBar->setValue(percentage);
-    } else if(y > ofGetHeight() - 60 && x < UI_PANEL_WIDTH) {
+        scrubberSliderGui = percentage;
+    } else if(y >= ofGetHeight() - 60 && y <= ofGetHeight() - 10 && x >= 10 && x <= UI_PANEL_WIDTH - 10) {
+        // More precise check for the drop zone rectangle
         ofFileDialogResult result = ofSystemLoadDialog("Select folder containing images", true);
         if(result.bSuccess) {
             folderSelected(result);
@@ -472,15 +526,10 @@ void ofApp::mouseReleased(int x, int y, int button){
         
         // Restore previous playback state
         isPlaying = prevPlayState;
-        speedSlider->setValue(prevPlaySpeed);
+        speedSliderGui = prevPlaySpeed;
         
         // Update play button appearance
-        playButton->setLabel(isPlaying ? "Pause" : "Play");
-        if(isPlaying) {
-            playButton->setBackgroundColor(ofColor(255, 128, 0)); // Orange for playing
-        } else {
-            playButton->setBackgroundColor(ofColor(0, 200, 0)); // Green for paused
-        }
+        playButtonGui.setName(isPlaying ? "Pause" : "Play");
     }
 }
 
@@ -501,7 +550,7 @@ void ofApp::windowResized(int w, int h){
     previewPanel.set(UI_PANEL_WIDTH, 0, w - UI_PANEL_WIDTH, h);
     
     // Update GUI position
-    gui->setPosition(10, 10);
+    gui.setPosition(10, 10);
 }
 
 //--------------------------------------------------------------
@@ -545,11 +594,11 @@ void ofApp::loadImagesFromDirectory(string path) {
         int lastFrame = imagePaths.size();  // 1-based for display
         
         // Update slider ranges and values
-        startFrameSlider->setMax(lastFrame);
-        endFrameSlider->setMax(lastFrame);
+        startFrameSliderGui.setMax(lastFrame);
+        endFrameSliderGui.setMax(lastFrame);
         
-        startFrameSlider->setValue(1);
-        endFrameSlider->setValue(lastFrame);
+        startFrameSliderGui = 1;
+        endFrameSliderGui = lastFrame;
         
         // Update internal range variables (0-based for program)
         rangeStart = 0;  // 0-based index for first frame
@@ -564,8 +613,8 @@ void ofApp::loadImagesFromDirectory(string path) {
 
 void ofApp::updateImageRange() {
     // Convert from 1-based display to 0-based program indices
-    rangeStart = startFrameSlider->getValue() - 1;
-    rangeEnd = endFrameSlider->getValue() - 1;
+    rangeStart = startFrameSliderGui - 1;
+    rangeEnd = endFrameSliderGui - 1;
     
     // Make sure we're within bounds (using 0-based indices)
     rangeStart = ofClamp(rangeStart, 0, imagePaths.size() - 1);
@@ -583,75 +632,81 @@ void ofApp::updateImageRange() {
 void ofApp::updateFrameInfo() {
     // Display frame numbers as 1-based
     string info = ofToString(currentImageIndex + 1) + "/" + ofToString(imagePaths.size());
-    currentFrameLabel->setLabel(info);
+    currentFrameLabelGui = info;
 }
 
-void ofApp::onPlayButtonEvent(ofxDatGuiButtonEvent e) {
+// New event handlers for ofxGui
+void ofApp::onPlayButtonEvent(){
     isPlaying = !isPlaying;
-    playButton->setLabel(isPlaying ? "Pause" : "Play");
-    
-    // Set button color based on play state
-    if(isPlaying) {
-        playButton->setBackgroundColor(ofColor(255, 128, 0)); // Orange for playing
-    } else {
-        playButton->setBackgroundColor(ofColor(0, 200, 0)); // Green for paused
-    }
-    
-    if(isPlaying && speedSlider->getValue() <= 0.0f) {
-        speedSlider->setValue(1.0f);
-    }
+    playButtonGui.setName(isPlaying ? "Pause" : "Play");
 }
 
-void ofApp::onSpeedSliderEvent(ofxDatGuiSliderEvent e) {
-    float actualSpeed = convertSliderToSpeed(e.value);
+void ofApp::onSpeedSliderEvent(float & value){
+    float actualSpeed = convertSliderToSpeed(value);
     playbackSpeed = (actualSpeed > 0.0f) ? (1.0f / (BASE_FPS * actualSpeed)) : 0.0f;
     lastImageTime = ofGetElapsedTimef();
 }
 
-void ofApp::onSpeedButtonEvent(ofxDatGuiButtonEvent e) {
-    // Find the button's speed value based on its label
-    string label = e.target->getLabel();
-    float value = 1.0f; // default
-    if(label == ".2x") value = 0.2f;
-    else if(label == ".5x") value = 0.5f;
-    else if(label == "1x") value = 1.0f;
-    else if(label == "2x") value = 2.0f;
-    
-    speedSlider->setValue(value);
+void ofApp::onSpeed02xEvent(){
+    speedSliderGui = convertSpeedToSlider(0.2f);
 }
 
-void ofApp::onStartFrameEvent(ofxDatGuiSliderEvent e) {
-    updateImageRange();
+void ofApp::onSpeed05xEvent(){
+    speedSliderGui = convertSpeedToSlider(0.5f);
 }
 
-void ofApp::onEndFrameEvent(ofxDatGuiSliderEvent e) {
-    updateImageRange();
+void ofApp::onSpeed1xEvent(){
+    speedSliderGui = convertSpeedToSlider(1.0f);
 }
 
-void ofApp::onBlackScreenToggleEvent(ofxDatGuiToggleEvent e) {
-    showBlackScreen = e.checked;
+void ofApp::onSpeed2xEvent(){
+    speedSliderGui = convertSpeedToSlider(2.0f);
 }
 
-void ofApp::onSyphonWidthEvent(ofxDatGuiTextInputEvent e) {
-    syphonWidth = ofToInt(e.text);
+void ofApp::onDirectionForwardEvent(bool & value){
+    if (value) {
+        playDirection = FORWARD;
+        directionBackwardGui = false;
+    } else if (!directionBackwardGui) {
+        // Don't allow both to be unchecked
+        directionForwardGui = true;
+    }
 }
 
-void ofApp::onSyphonHeightEvent(ofxDatGuiTextInputEvent e) {
-    syphonHeight = ofToInt(e.text);
+void ofApp::onDirectionBackwardEvent(bool & value){
+    if (value) {
+        playDirection = BACKWARD;
+        directionForwardGui = false;
+    } else if (!directionForwardGui) {
+        // Don't allow both to be unchecked
+        directionBackwardGui = true;
+    }
 }
 
-void ofApp::onAspectRatioEvent(ofxDatGuiToggleEvent e) {
-    maintainAspectRatio = e.checked;
+void ofApp::onLoopModeEvent(bool & value){
+    if (value) {
+        loopMode = LOOP;
+        pingPongModeToggleGui = false;
+    } else if (!pingPongModeToggleGui) {
+        // Don't allow both to be unchecked
+        loopModeToggleGui = true;
+    }
 }
 
-void ofApp::onApplySyphonSizeEvent(ofxDatGuiButtonEvent e) {
-    syphonFbo.allocate(syphonWidth, syphonHeight, GL_RGBA);
+void ofApp::onPingPongModeEvent(bool & value){
+    if (value) {
+        loopMode = PING_PONG;
+        loopModeToggleGui = false;
+    } else if (!loopModeToggleGui) {
+        // Don't allow both to be unchecked
+        pingPongModeToggleGui = true;
+    }
 }
 
-void ofApp::onScrubberEvent(ofxDatGuiSliderEvent e) {
+void ofApp::onScrubberEvent(float & value){
     if (!imagePaths.empty() && rangeEnd > rangeStart) {
         // Calculate frame index based on percentage
-        int frameIndex = rangeStart + round(e.value * (rangeEnd - rangeStart));
+        int frameIndex = rangeStart + round(value * (rangeEnd - rangeStart));
         frameIndex = ofClamp(frameIndex, rangeStart, rangeEnd);
         
         // Update current frame
@@ -663,98 +718,87 @@ void ofApp::onScrubberEvent(ofxDatGuiSliderEvent e) {
     }
 }
 
+void ofApp::onStartFrameEvent(int & value){
+    updateImageRange();
+}
+
+void ofApp::onEndFrameEvent(int & value){
+    updateImageRange();
+}
+
+void ofApp::onBlackScreenToggleEvent(bool & value){
+    showBlackScreen = value;
+}
+
+void ofApp::onSyphonWidthEvent(int & value){
+    syphonWidth = value;
+}
+
+void ofApp::onSyphonHeightEvent(int & value){
+    syphonHeight = value;
+}
+
+void ofApp::onAspectRatioEvent(bool & value){
+    maintainAspectRatio = value;
+}
+
+void ofApp::onApplySyphonSizeEvent(){
+    syphonFbo.allocate(syphonWidth, syphonHeight, GL_RGBA);
+}
+
+void ofApp::onLast5FramesEvent(){
+    setLastXFrames(5);
+    customLastFramesGui = 5;
+}
+
+void ofApp::onLast10FramesEvent(){
+    setLastXFrames(10);
+    customLastFramesGui = 10;
+}
+
+void ofApp::onLast100FramesEvent(){
+    setLastXFrames(100);
+    customLastFramesGui = 100;
+}
+
+void ofApp::onCustomLastFramesEvent(int & value){
+    setLastXFrames(value);
+}
+
+void ofApp::setLastXFrames(int numFrames){
+    if (!imagePaths.empty()) {
+        int totalFrames = imagePaths.size();
+        
+        // Calculate new range
+        int newStart = std::max(0, totalFrames - numFrames);
+        int newEnd = totalFrames - 1;
+        
+        // Update sliders
+        startFrameSliderGui = newStart + 1; // Convert to 1-based for display
+        endFrameSliderGui = newEnd + 1;     // Convert to 1-based for display
+        
+        // Update internal range variables
+        rangeStart = newStart;
+        rangeEnd = newEnd;
+        
+        // Set current frame to start of range
+        currentImageIndex = rangeStart;
+        if (currentImageIndex < imagePaths.size()) {
+            currentImage.load(imagePaths[currentImageIndex]);
+            updateFrameInfo();
+        }
+    }
+}
+
 //--------------------------------------------------------------
 void ofApp::gotMessage(ofMessage msg){
     // Empty implementation - this is a required method in openFrameworks
 }
 
-// Add new event handlers for direction and loop mode controls
-void ofApp::onDirectionForwardEvent(ofxDatGuiToggleEvent e) {
-    if (e.checked) {
-        playDirection = FORWARD;
-        directionBackwardButton->setChecked(false);
-    } else if (!directionBackwardButton->getChecked()) {
-        // Don't allow both to be unchecked
-        directionForwardButton->setChecked(true);
-    }
-}
-
-void ofApp::onDirectionBackwardEvent(ofxDatGuiToggleEvent e) {
-    if (e.checked) {
-        playDirection = BACKWARD;
-        directionForwardButton->setChecked(false);
-    } else if (!directionForwardButton->getChecked()) {
-        // Don't allow both to be unchecked
-        directionBackwardButton->setChecked(true);
-    }
-}
-
-void ofApp::onLoopModeEvent(ofxDatGuiToggleEvent e) {
-    if (e.checked) {
-        loopMode = LOOP;
-        pingPongModeButton->setChecked(false);
-    } else if (!pingPongModeButton->getChecked()) {
-        // Don't allow both to be unchecked
-        loopModeButton->setChecked(true);
-    }
-}
-
-void ofApp::onPingPongModeEvent(ofxDatGuiToggleEvent e) {
-    if (e.checked) {
-        loopMode = PING_PONG;
-        loopModeButton->setChecked(false);
-    } else if (!loopModeButton->getChecked()) {
-        // Don't allow both to be unchecked
-        pingPongModeButton->setChecked(true);
-    }
-}
-
-void ofApp::onLastFramesButtonEvent(ofxDatGuiButtonEvent e) {
-    string label = e.target->getLabel();
-    int numFrames = 0;
-    
-    // Extract the number from the button label (format: "Last X")
-    size_t spacePos = label.find(" ");
-    if (spacePos != string::npos) {
-        string numStr = label.substr(spacePos + 1);
-        numFrames = ofToInt(numStr);
-    }
-    
-    if (numFrames > 0) {
-        setLastXFrames(numFrames);
-        // Update the custom input field to reflect the selection
-        lastFramesInput->setText(ofToString(numFrames));
-    }
-}
-
-void ofApp::onLastFramesInputEvent(ofxDatGuiTextInputEvent e) {
-    int numFrames = ofToInt(e.text);
-    if (numFrames > 0) {
-        setLastXFrames(numFrames);
-    }
-}
-
-void ofApp::setLastXFrames(int numFrames) {
-    if (imagePaths.empty()) return;
-    
-    int totalFrames = imagePaths.size();
-    
-    // Calculate new start and end frames
-    int newStart = max(1, totalFrames - numFrames + 1); // 1-based index for display
-    int newEnd = totalFrames; // 1-based index for display
-    
-    // Update sliders
-    startFrameSlider->setValue(newStart);
-    endFrameSlider->setValue(newEnd);
-    
-    // Update internal range variables (0-based for program)
-    rangeStart = newStart - 1;
-    rangeEnd = newEnd - 1;
-    
-    // Set current frame to start of range
-    currentImageIndex = rangeStart;
-    if (currentImageIndex < imagePaths.size()) {
-        currentImage.load(imagePaths[currentImageIndex]);
-        updateFrameInfo();
+// Add the event handler for the open folder button
+void ofApp::onOpenFolderEvent(){
+    ofFileDialogResult result = ofSystemLoadDialog("Select folder containing images", true);
+    if(result.bSuccess) {
+        folderSelected(result);
     }
 }
