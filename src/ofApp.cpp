@@ -177,7 +177,7 @@ void ofApp::setup(){
     gui.add(&syphonGroupGui);
     
     // Set initial display path
-    displayPath = "Drop folder here or click Open";
+    displayPath = "";
     
     // Log the app bundle structure
     ofLogNotice("ofApp") << "Listing app bundle contents:";
@@ -367,7 +367,7 @@ void ofApp::draw(){
     
     // Add a visual cue for the drop zone
     ofSetColor(120);
-    ofDrawBitmapString("Drop folder here or click to open", 20, ofGetHeight() - 45);
+    ofDrawBitmapString("Drop folder here open", 20, ofGetHeight() - 45);
     
     ofPopStyle();
 }
@@ -648,19 +648,19 @@ void ofApp::onSpeedSliderEvent(float & value){
 }
 
 void ofApp::onSpeed02xEvent(){
-    speedSliderGui = convertSpeedToSlider(0.2f);
+    speedSliderGui = 0.2f;
 }
 
 void ofApp::onSpeed05xEvent(){
-    speedSliderGui = convertSpeedToSlider(0.5f);
+    speedSliderGui = 0.5f;
 }
 
 void ofApp::onSpeed1xEvent(){
-    speedSliderGui = convertSpeedToSlider(1.0f);
+    speedSliderGui = 1.0f;
 }
 
 void ofApp::onSpeed2xEvent(){
-    speedSliderGui = convertSpeedToSlider(2.0f);
+    speedSliderGui = 2.0f;
 }
 
 void ofApp::onDirectionForwardEvent(bool & value){
