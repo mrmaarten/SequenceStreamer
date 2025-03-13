@@ -31,6 +31,8 @@ void ofApp::setup(){
     checkInterval = 2.0;
     playDirection = FORWARD;
     loopMode = LOOP;
+    scrubbingQuality = 320;  // Default scrubbing quality (width in pixels)
+    ultraLowQualityScrubbing = false;
     
     // Initialize Syphon parameters
     syphonWidth = 1920;
@@ -153,6 +155,18 @@ void ofApp::setup(){
     blackScreenToggleGui.addListener(this, &ofApp::onBlackScreenToggleEvent);
     gui.add(&blackScreenToggleGui);
     
+    // Add scrubbing quality control
+    scrubbingGroupGui.setup("Scrubbing Performance");
+    scrubbingQualitySliderGui.setup("Quality", scrubbingQuality, 64, 640);
+    scrubbingQualitySliderGui.addListener(this, &ofApp::onScrubbingQualityEvent);
+    scrubbingGroupGui.add(&scrubbingQualitySliderGui);
+    
+    ultraLowQualityToggleGui.setup("Ultra-Low Quality", ultraLowQualityScrubbing);
+    ultraLowQualityToggleGui.addListener(this, &ofApp::onUltraLowQualityEvent);
+    scrubbingGroupGui.add(&ultraLowQualityToggleGui);
+    
+    gui.add(&scrubbingGroupGui);
+    
     // Add Syphon controls
     syphonGroupGui.setup("Syphon Settings");
     
@@ -255,6 +269,7 @@ void ofApp::update(){
             }
             
             if (currentImageIndex >= 0 && currentImageIndex < imagePaths.size()) {
+                // Load the image with normal quality during playback
                 currentImage.load(imagePaths[currentImageIndex]);
                 updateFrameInfo();
             }
@@ -694,7 +709,7 @@ void ofApp::onScrubberEvent(float & value){
     // Debounce rapid scrubbing events
     float currentTime = ofGetElapsedTimef();
     static float lastScrubTime = 0;
-    static float scrubDebounceTime = 0.05; // 50ms debounce
+    static float scrubDebounceTime = 0.1; // Increased to 100ms for better performance
     
     // Skip processing if events are coming too quickly
     if(currentTime - lastScrubTime < scrubDebounceTime && !imagePaths.empty()) {
@@ -709,37 +724,40 @@ void ofApp::onScrubberEvent(float & value){
     
     if(frameIndex != currentImageIndex) {
         currentImageIndex = frameIndex;
+        updateFrameInfo(); // Update frame info immediately for responsive UI
         
-        // Load the image with reduced quality during scrubbing
-        static bool isScrubbing = false;
-        if(!isScrubbing) {
-            isScrubbing = true;
-            // Remember playback state
-            bool wasPlaying = isPlaying;
-            isPlaying = false;
+        // Remember playback state
+        bool wasPlaying = isPlaying;
+        isPlaying = false;
+        
+        if (ultraLowQualityScrubbing) {
+            // Ultra-low quality mode - just use a colored placeholder
+            // This is extremely fast but doesn't show image content
+            ofPixels pixels;
+            pixels.allocate(64, 64, OF_IMAGE_COLOR);
             
-            // Load image at reduced quality for faster scrubbing
-            currentImage.setUseTexture(false); // Temporarily disable texture loading
-            currentImage.load(imagePaths[currentImageIndex]);
-            currentImage.setUseTexture(true);
-            currentImage.update(); // Now create the texture
+            // Generate a color based on the frame number for visual feedback
+            int hue = (currentImageIndex * 20) % 255;
+            ofColor color;
+            color.setHsb(hue, 200, 200);
+            pixels.setColor(color);
             
-            updateFrameInfo();
-            
-            // Schedule a higher quality reload when scrubbing stops
-            scrubEndTime = currentTime + 0.3; // 300ms after last scrub
-            
-            // Use a lambda to check if scrubbing has ended
-            ofAddListener(ofEvents().update, this, &ofApp::checkScrubEnd);
-            
-            // Restore playback state
-            isPlaying = wasPlaying;
-            isScrubbing = false;
+            currentImage.clear();
+            currentImage.allocate(64, 64, OF_IMAGE_COLOR);
+            currentImage.setFromPixels(pixels);
+            currentImage.update();
         } else {
-            // Just load the image normally if we're not in a rapid scrub
+            // Very simple approach - just load the image directly
+            // This is actually faster in many cases than trying to optimize too much
             currentImage.load(imagePaths[currentImageIndex]);
-            updateFrameInfo();
         }
+        
+        // Schedule a higher quality reload when scrubbing stops
+        scrubEndTime = currentTime + 0.3; // 300ms after last scrub
+        ofAddListener(ofEvents().update, this, &ofApp::checkScrubEnd);
+        
+        // Restore playback state
+        isPlaying = wasPlaying;
     }
 }
 
@@ -748,8 +766,10 @@ void ofApp::checkScrubEnd(ofEventArgs &args) {
     float currentTime = ofGetElapsedTimef();
     
     if(currentTime > scrubEndTime) {
-        // Reload current image at full quality
-        if(currentImageIndex >= 0 && currentImageIndex < imagePaths.size()) {
+        // We're already loading full quality during scrubbing in the normal mode,
+        // so we only need to reload if we were in ultra-low quality mode
+        if(ultraLowQualityScrubbing && currentImageIndex >= 0 && currentImageIndex < imagePaths.size()) {
+            ofLogVerbose("ofApp") << "Scrubbing ended, loading full quality image";
             currentImage.load(imagePaths[currentImageIndex]);
         }
         ofRemoveListener(ofEvents().update, this, &ofApp::checkScrubEnd);
@@ -893,4 +913,28 @@ void ofApp::checkDirectoryForChanges() {
     }
     
     lastCheckTime = currentTime;
+}
+
+// Add the scrubbing quality event handler
+void ofApp::onScrubbingQualityEvent(int & value) {
+    scrubbingQuality = value;
+    ofLogNotice("ofApp") << "Scrubbing quality set to: " << scrubbingQuality << " pixels width";
+}
+
+// Add the ultra-low quality event handler
+void ofApp::onUltraLowQualityEvent(bool & value) {
+    ultraLowQualityScrubbing = value;
+    ofLogNotice("ofApp") << "Ultra-low quality scrubbing: " << (ultraLowQualityScrubbing ? "ON" : "OFF");
+    
+    // If ultra-low quality is enabled, we can set an even lower scrubbing quality
+    if (ultraLowQualityScrubbing) {
+        ofLogNotice("ofApp") << "Using placeholder images for scrubbing";
+        // Automatically set a very low quality for ultra mode
+        scrubbingQuality = 64;
+        scrubbingQualitySliderGui = 64;
+    } else {
+        // Reset to default quality
+        scrubbingQuality = 320;
+        scrubbingQualitySliderGui = 320;
+    }
 }

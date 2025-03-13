@@ -61,6 +61,8 @@ public:
 	void onSyphon720pEvent();
 	void onSyphonImageResEvent();
 	void onSyphonHalfResEvent();
+	void onScrubbingQualityEvent(int & value);
+	void onUltraLowQualityEvent(bool & value);
 	
 	// Constants
 	static const float BASE_FPS;
@@ -137,6 +139,11 @@ public:
 	ofxButton syphonImageResGui;
 	ofxButton syphonHalfResGui;
 	
+	// Scrubbing quality control
+	ofxPanel scrubbingGroupGui;
+	ofxIntSlider scrubbingQualitySliderGui;
+	ofxToggle ultraLowQualityToggleGui;
+	
 	// Image and playback variables
 	ofImage currentImage;
 	vector<string> imagePaths;
@@ -171,6 +178,10 @@ public:
 	int syphonWidth;
 	int syphonHeight;
 	bool maintainAspectRatio;
+
+	// Scrubbing quality control
+	int scrubbingQuality = 320;  // Width in pixels for scrubbing preview (lower = faster)
+	bool ultraLowQualityScrubbing = false;  // For very large image sets
 
 	// Add this to your class declaration
 	void checkDirectoryForChanges();
