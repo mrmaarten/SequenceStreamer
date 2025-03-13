@@ -167,4 +167,10 @@ public:
 	int syphonWidth;
 	int syphonHeight;
 	bool maintainAspectRatio;
+
+	// Add this to your class declaration
+	void checkDirectoryForChanges();
+
+private:
+	ofDirectory getImageDirectory(const string& path);
 };

@@ -213,25 +213,12 @@ void ofApp::setup(){
 
 //--------------------------------------------------------------
 void ofApp::update(){    
-    // Add directory watching
-    float currentTime = ofGetElapsedTimef();
-    if (!directoryPath.empty() && currentTime - lastCheckTime >= checkInterval) {
-        imageDir.listDir(directoryPath);
-        imageDir.allowExt("jpg");
-        imageDir.allowExt("png");
-        imageDir.allowExt("tif");
-        imageDir.allowExt("tiff");
-        
-        // If number of files changed, reload the directory
-        if (imageDir.size() != imagePaths.size()) {
-            loadImagesFromDirectory(directoryPath);
-        }
-        lastCheckTime = currentTime;
-    }
+    // Check for directory changes
+    checkDirectoryForChanges();
 
     if (isPlaying && !showBlackScreen && !imagePaths.empty() && speedSliderGui > 0.0f) {
         float frameTime = 1.0f / (BASE_FPS * convertSliderToSpeed(speedSliderGui));
-        currentTime = ofGetElapsedTimef();
+        float currentTime = ofGetElapsedTimef();
         
         if (currentTime - lastImageTime >= frameTime) {
             // Update frame index based on playback direction
@@ -523,21 +510,35 @@ void ofApp::folderSelected(ofFileDialogResult result) {
     loadImagesFromDirectory(directoryPath);
 }
 
+// Helper function to set up directory with image filters
+ofDirectory ofApp::getImageDirectory(const string& path) {
+    ofDirectory dir(path);
+    dir.allowExt("jpg");
+    dir.allowExt("jpeg");
+    dir.allowExt("png");
+    dir.allowExt("tif");
+    dir.allowExt("tiff");
+    dir.listDir();
+    dir.sort(); // Sort files by name
+    return dir;
+}
+
 void ofApp::loadImagesFromDirectory(string path) {
     imagePaths.clear();
-    imageDir.listDir(path);
-    imageDir.allowExt("jpg");
-    imageDir.allowExt("png");
-    imageDir.allowExt("tif");
-    imageDir.allowExt("tiff");
     
-    for(int i = 0; i < imageDir.size(); i++) {
-        imagePaths.push_back(imageDir.getPath(i));
+    ofDirectory dir = getImageDirectory(path);
+    ofLogNotice("ofApp") << "Found " << dir.size() << " images in directory: " << path;
+    
+    // Store all image paths
+    for(int i = 0; i < dir.size(); i++) {
+        string filePath = dir.getPath(i);
+        imagePaths.push_back(filePath);
+        ofLogVerbose("ofApp") << "Added image: " << filePath;
     }
     
     if (!imagePaths.empty()) {
         // Set the maximum range for the sliders (1-based for display)
-        int lastFrame = imagePaths.size();  // 1-based for display
+        int lastFrame = imagePaths.size();
         
         // Update slider ranges and values
         startFrameSliderGui.setMax(lastFrame);
@@ -547,13 +548,15 @@ void ofApp::loadImagesFromDirectory(string path) {
         endFrameSliderGui = lastFrame;
         
         // Update internal range variables (0-based for program)
-        rangeStart = 0;  // 0-based index for first frame
-        rangeEnd = lastFrame - 1;  // 0-based index for last frame
+        rangeStart = 0;
+        rangeEnd = lastFrame - 1;
         
         // Set current frame within the range
         currentImageIndex = ofClamp(currentImageIndex, rangeStart, rangeEnd);
         currentImage.load(imagePaths[currentImageIndex]);
         updateFrameInfo();
+    } else {
+        ofLogWarning("ofApp") << "No images found in directory: " << path;
     }
 }
 
@@ -781,4 +784,26 @@ void ofApp::onSyphonHalfResEvent() {
         syphonHeightSliderGui = currentImage.getHeight() / 2;
         syphonFbo.allocate(syphonWidth, syphonHeight, GL_RGBA);
     }
+}
+
+// New function to handle directory watching
+void ofApp::checkDirectoryForChanges() {
+    float currentTime = ofGetElapsedTimef();
+    
+    // Only check at the specified interval and if we have a directory path
+    if (directoryPath.empty() || currentTime - lastCheckTime < checkInterval) {
+        return;
+    }
+    
+    // Check current directory contents
+    ofDirectory dir = getImageDirectory(directoryPath);
+    int currentFileCount = dir.size();
+    
+    // If count changed or we have no images loaded yet, reload directory
+    if (currentFileCount != imagePaths.size()) {
+        ofLogNotice("ofApp") << "Directory changed: " << currentFileCount << " files (was " << imagePaths.size() << ")";
+        loadImagesFromDirectory(directoryPath);
+    }
+    
+    lastCheckTime = currentTime;
 }
