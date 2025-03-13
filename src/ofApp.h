@@ -150,6 +150,8 @@ public:
 	bool showBlackScreen;
 	int rangeStart;
 	int rangeEnd;
+	bool rangeSetByUser = false;
+	int lastFrame = 0;
 	float lastCheckTime;
 	float checkInterval;
 	Direction playDirection;
@@ -160,6 +162,7 @@ public:
 
 	bool prevPlayState;
 	float prevPlaySpeed;
+	int previousDirSize;
 	
 	// Syphon variables
 	ofxSyphonServer syphonServer;

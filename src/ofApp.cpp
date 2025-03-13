@@ -28,7 +28,7 @@ void ofApp::setup(){
     rangeStart = 0;
     rangeEnd = 0;
     lastCheckTime = 0;
-    checkInterval = 1.0; // Check every second
+    checkInterval = 2.0;
     playDirection = FORWARD;
     loopMode = LOOP;
     
@@ -527,37 +527,79 @@ void ofApp::loadImagesFromDirectory(string path) {
     imagePaths.clear();
     
     ofDirectory dir = getImageDirectory(path);
-    ofLogNotice("ofApp") << "Found " << dir.size() << " images in directory: " << path;
+    ofLogNotice("ofApp") << "rangeSetByUser " << rangeSetByUser;
     
     // Store all image paths
     for(int i = 0; i < dir.size(); i++) {
         string filePath = dir.getPath(i);
         imagePaths.push_back(filePath);
-        ofLogVerbose("ofApp") << "Added image: " << filePath;
+        // ofLogVerbose("ofApp") << "Added image: " << filePath;  // Only log in verbose mode
     }
     
     if (!imagePaths.empty()) {
-        // Set the maximum range for the sliders (1-based for display)
-        int lastFrame = imagePaths.size();
-        
-        // Update slider ranges and values
-        startFrameSliderGui.setMax(lastFrame);
-        endFrameSliderGui.setMax(lastFrame);
-        
-        startFrameSliderGui = 1;
-        endFrameSliderGui = lastFrame;
-        
-        // Update internal range variables (0-based for program)
-        rangeStart = 0;
-        rangeEnd = lastFrame - 1;
-        
-        // Set current frame within the range
-        currentImageIndex = ofClamp(currentImageIndex, rangeStart, rangeEnd);
-        currentImage.load(imagePaths[currentImageIndex]);
-        updateFrameInfo();
+        // see if the range was already set by folder
+        if (!rangeSetByUser) {  
+            // Set the maximum range for the sliders (1-based for display)
+            ofLogNotice("ofApp") << "Range never set before";
+
+            lastFrame = imagePaths.size();
+            
+            // Update slider ranges and values
+            startFrameSliderGui.setMax(lastFrame);
+            endFrameSliderGui.setMax(lastFrame);
+            
+            startFrameSliderGui = 1;
+            endFrameSliderGui = lastFrame;
+            
+            // Update internal range variables (0-based for program)
+            rangeStart = 0;
+            rangeEnd = lastFrame - 1;
+            
+            // Set current frame within the range
+            currentImageIndex = ofClamp(currentImageIndex, rangeStart, rangeEnd);
+            ofLogNotice("ofApp") << "currentImageIndex: " << currentImageIndex;
+
+            currentImage.load(imagePaths[currentImageIndex]);
+            updateFrameInfo();
+        } else {
+            int imageIndexOffset = imagePaths.size() - previousDirSize;
+            ofLogNotice("ofApp") << "imageIndexOffset: " << imageIndexOffset;
+            ofLogNotice("ofApp") << "Range set by user";
+            
+            lastFrame = imagePaths.size();
+            
+            // int rangeFromEnd = (rangeEnd - rangeStart) + 1;
+
+            ofLogNotice("ofApp") << "lastFrame: " << lastFrame;
+            ofLogNotice("ofApp") << "old rangeStart: " << rangeStart << " old rangeEnd: " << rangeEnd;
+
+            // Update slider ranges and values
+            startFrameSliderGui.setMax(lastFrame);
+            endFrameSliderGui.setMax(lastFrame);
+
+            // Make sure we're within bounds (using 0-based indices)
+            rangeStart = ofClamp(rangeStart, 0, imagePaths.size() - 1);
+            rangeEnd = ofClamp(rangeEnd, rangeStart, imagePaths.size() - 1);
+
+            ofLogNotice("ofApp") << "new rangeStart: " << rangeStart << " new rangeEnd: " << rangeEnd;
+
+            
+            // Update current index if it's out of range
+            if (currentImageIndex < rangeStart || currentImageIndex > rangeEnd) {
+                currentImageIndex = rangeStart;
+            }
+
+            // Update sliders
+            startFrameSliderGui = rangeStart + 1 + imageIndexOffset; // Convert to 1-based for display
+            endFrameSliderGui = rangeEnd + 1 + imageIndexOffset;     // Convert to 1-based for display
+
+            currentImage.load(imagePaths[currentImageIndex]);
+            updateFrameInfo();
+        }
     } else {
         ofLogWarning("ofApp") << "No images found in directory: " << path;
     }
+    previousDirSize = imagePaths.size();
 }
 
 void ofApp::updateImageRange() {
@@ -675,10 +717,12 @@ void ofApp::onScrubberEvent(float & value){
 
 void ofApp::onStartFrameEvent(int & value){
     updateImageRange();
+    rangeSetByUser = true;
 }
 
 void ofApp::onEndFrameEvent(int & value){
     updateImageRange();
+    rangeSetByUser = true;
 }
 
 void ofApp::onBlackScreenToggleEvent(bool & value){
@@ -723,6 +767,8 @@ void ofApp::onCustomLastFramesEvent(int & value){
 void ofApp::setLastXFrames(int numFrames){
     if (!imagePaths.empty()) {
         int totalFrames = imagePaths.size();
+
+        rangeSetByUser = true;
         
         // Calculate new range
         int newStart = std::max(0, totalFrames - numFrames);
@@ -795,12 +841,12 @@ void ofApp::checkDirectoryForChanges() {
         return;
     }
     
-    // Check current directory contents
+    // Quick check for file count changes
     ofDirectory dir = getImageDirectory(directoryPath);
     int currentFileCount = dir.size();
     
-    // If count changed or we have no images loaded yet, reload directory
-    if (currentFileCount != imagePaths.size()) {
+    // Only log and reload if the count changed
+    if (currentFileCount != previousDirSize) {
         ofLogNotice("ofApp") << "Directory changed: " << currentFileCount << " files (was " << imagePaths.size() << ")";
         loadImagesFromDirectory(directoryPath);
     }
