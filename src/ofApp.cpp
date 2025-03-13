@@ -538,7 +538,7 @@ void ofApp::loadImagesFromDirectory(string path) {
     
     if (!imagePaths.empty()) {
         // see if the range was already set by folder
-        if (!rangeSetByUser) {  
+        if (!rangeSetByUser || (rangeStart == 0 && rangeEnd == previousDirSize - 1)) {  
             // Set the maximum range for the sliders (1-based for display)
             ofLogNotice("ofApp") << "Range never set before";
 
@@ -571,27 +571,23 @@ void ofApp::loadImagesFromDirectory(string path) {
             // int rangeFromEnd = (rangeEnd - rangeStart) + 1;
 
             ofLogNotice("ofApp") << "lastFrame: " << lastFrame;
-            ofLogNotice("ofApp") << "old rangeStart: " << rangeStart << " old rangeEnd: " << rangeEnd;
 
             // Update slider ranges and values
             startFrameSliderGui.setMax(lastFrame);
             endFrameSliderGui.setMax(lastFrame);
 
             // Make sure we're within bounds (using 0-based indices)
-            rangeStart = ofClamp(rangeStart, 0, imagePaths.size() - 1);
-            rangeEnd = ofClamp(rangeEnd, rangeStart, imagePaths.size() - 1);
+            rangeStart = ofClamp(rangeStart + imageIndexOffset, 0, imagePaths.size() - 1);
+            rangeEnd = ofClamp(rangeEnd + imageIndexOffset, rangeStart, imagePaths.size() - 1);
 
-            ofLogNotice("ofApp") << "new rangeStart: " << rangeStart << " new rangeEnd: " << rangeEnd;
-
-            
             // Update current index if it's out of range
             if (currentImageIndex < rangeStart || currentImageIndex > rangeEnd) {
                 currentImageIndex = rangeStart;
             }
 
             // Update sliders
-            startFrameSliderGui = rangeStart + 1 + imageIndexOffset; // Convert to 1-based for display
-            endFrameSliderGui = rangeEnd + 1 + imageIndexOffset;     // Convert to 1-based for display
+            startFrameSliderGui = rangeStart + 1; // Convert to 1-based for display
+            endFrameSliderGui = rangeEnd + 1;     // Convert to 1-based for display
 
             currentImage.load(imagePaths[currentImageIndex]);
             updateFrameInfo();
