@@ -159,6 +159,7 @@ public:
 	
 	// Scrubbing variables
 	bool isScrubbing = false;
+	float scrubEndTime = 0;
 
 	bool prevPlayState;
 	float prevPlaySpeed;
@@ -173,6 +174,7 @@ public:
 
 	// Add this to your class declaration
 	void checkDirectoryForChanges();
+	void checkScrubEnd(ofEventArgs &args);
 
 private:
 	ofDirectory getImageDirectory(const string& path);

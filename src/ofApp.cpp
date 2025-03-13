@@ -691,14 +691,17 @@ void ofApp::onPingPongModeEvent(bool & value){
 }
 
 void ofApp::onScrubberEvent(float & value){
-    // Only pause if we're not already scrubbing
-    // if(!isScrubbing) {
-    //     prevPlayState = isPlaying;
-    //     prevPlaySpeed = speedSliderGui;
-    //     isPlaying = false;
-    //     playButtonGui.setName("Play");
-    //     isScrubbing = true;
-    // }
+    // Debounce rapid scrubbing events
+    float currentTime = ofGetElapsedTimef();
+    static float lastScrubTime = 0;
+    static float scrubDebounceTime = 0.05; // 50ms debounce
+    
+    // Skip processing if events are coming too quickly
+    if(currentTime - lastScrubTime < scrubDebounceTime && !imagePaths.empty()) {
+        return;
+    }
+    
+    lastScrubTime = currentTime;
     
     // Calculate frame index based on scrubber value
     int frameIndex = rangeStart + round(value * (rangeEnd - rangeStart));
@@ -706,8 +709,50 @@ void ofApp::onScrubberEvent(float & value){
     
     if(frameIndex != currentImageIndex) {
         currentImageIndex = frameIndex;
-        currentImage.load(imagePaths[currentImageIndex]);
-        updateFrameInfo();
+        
+        // Load the image with reduced quality during scrubbing
+        static bool isScrubbing = false;
+        if(!isScrubbing) {
+            isScrubbing = true;
+            // Remember playback state
+            bool wasPlaying = isPlaying;
+            isPlaying = false;
+            
+            // Load image at reduced quality for faster scrubbing
+            currentImage.setUseTexture(false); // Temporarily disable texture loading
+            currentImage.load(imagePaths[currentImageIndex]);
+            currentImage.setUseTexture(true);
+            currentImage.update(); // Now create the texture
+            
+            updateFrameInfo();
+            
+            // Schedule a higher quality reload when scrubbing stops
+            scrubEndTime = currentTime + 0.3; // 300ms after last scrub
+            
+            // Use a lambda to check if scrubbing has ended
+            ofAddListener(ofEvents().update, this, &ofApp::checkScrubEnd);
+            
+            // Restore playback state
+            isPlaying = wasPlaying;
+            isScrubbing = false;
+        } else {
+            // Just load the image normally if we're not in a rapid scrub
+            currentImage.load(imagePaths[currentImageIndex]);
+            updateFrameInfo();
+        }
+    }
+}
+
+// Add this new method to check if scrubbing has ended
+void ofApp::checkScrubEnd(ofEventArgs &args) {
+    float currentTime = ofGetElapsedTimef();
+    
+    if(currentTime > scrubEndTime) {
+        // Reload current image at full quality
+        if(currentImageIndex >= 0 && currentImageIndex < imagePaths.size()) {
+            currentImage.load(imagePaths[currentImageIndex]);
+        }
+        ofRemoveListener(ofEvents().update, this, &ofApp::checkScrubEnd);
     }
 }
 
